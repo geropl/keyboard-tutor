@@ -35,4 +35,24 @@ Better feedback on how well the player performed.
 
 ## Song Discovery
 
-- [ ] Search for and download song sheets from external sources
+The core idea: any song, from any source, playable in the app. Users can find
+MIDI files online, generate them from audio (via tools like Spotify Basic Pitch),
+or export from a DAW — then import into the app and play.
+
+### Phase 1 — MIDI Import
+
+- [ ] Upload a `.mid` file from the song list
+- [ ] Backend parses MIDI: extracts tracks, notes, tempo, time signature
+- [ ] Full-screen import editor: pick tracks, assign hands, set metadata
+- [ ] Four hand-assignment strategies: by track, by pitch split, all right, all left
+- [ ] Live waterfall preview during import editing
+- [ ] Save imported songs to `data/songs/` as standard JSON
+- [ ] Imported songs appear in song list with "Imported" badge
+- [ ] Delete and re-edit imported songs
+
+### Phase 2 — Audio-to-MIDI (future)
+
+- [ ] Integrate `@spotify/basic-pitch` (TypeScript, runs in browser)
+- [ ] "Import from Audio" button: drop MP3/WAV, transcribe to MIDI in-browser
+- [ ] Feeds into the same import editor pipeline from Phase 1
+- [ ] Explore YouTube URL support (download + transcribe)

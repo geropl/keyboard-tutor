@@ -9,6 +9,9 @@ export class SongListUI {
     this.progress = {};
     this.onSelectSong = null;
     this.onPreviewSong = null;
+    this.onImportMidi = null;
+    this.onDeleteSong = null;
+    this.onEditSong = null;
   }
 
   async load() {
@@ -34,11 +37,18 @@ export class SongListUI {
     header.innerHTML = `
       <div class="header-row">
         <h1>Piano Tutor</h1>
-        <button class="btn btn-icon btn-settings" id="btn-settings" title="Settings">&#9881;</button>
+        <div class="header-actions">
+          <button class="btn btn-small btn-import" id="btn-import" title="Import MIDI file">Import MIDI</button>
+          <button class="btn btn-icon btn-settings" id="btn-settings" title="Settings">&#9881;</button>
+        </div>
       </div>
       <p class="subtitle">Select a song to start learning</p>
     `;
     inner.appendChild(header);
+
+    header.querySelector('#btn-import').onclick = () => {
+      if (this.onImportMidi) this.onImportMidi();
+    };
 
     // Settings panel
     const panel = this._buildSettingsPanel();
@@ -89,10 +99,12 @@ export class SongListUI {
         const perf = prog?.performance;
         const bestScore = Math.max(prac?.bestScore || 0, perf?.bestScore || 0);
 
+        const isImported = song.source === 'imported';
         const card = document.createElement('div');
-        card.className = 'song-card' + (isRecommended ? ' recommended' : '');
+        card.className = 'song-card' + (isRecommended ? ' recommended' : '') + (isImported ? ' imported' : '');
         card.innerHTML = `
           ${isRecommended ? '<span class="badge">Recommended</span>' : ''}
+          ${isImported ? '<span class="badge badge-imported">Imported</span>' : ''}
           <div class="song-card-main">
             <div class="song-title">${song.title}</div>
             <div class="song-composer">${song.composer}</div>
@@ -103,12 +115,26 @@ export class SongListUI {
             ${bestScore > 0 ? `<div class="best-score">${bestScore}%</div>` : ''}
           </div>
           <div class="song-skill">${song.skillFocus || ''}</div>
-          <button class="btn-preview" title="Preview song">&#9654;</button>
+          <div class="song-card-actions">
+            ${isImported ? '<button class="btn-edit" title="Edit song">&#9998;</button>' : ''}
+            ${isImported ? '<button class="btn-delete" title="Delete song">&#10005;</button>' : ''}
+            <button class="btn-preview" title="Preview song">&#9654;</button>
+          </div>
         `;
         card.querySelector('.btn-preview').addEventListener('click', (e) => {
           e.stopPropagation();
           if (this.onPreviewSong) this.onPreviewSong(song.id);
         });
+        if (isImported) {
+          card.querySelector('.btn-edit').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this.onEditSong) this.onEditSong(song.id);
+          });
+          card.querySelector('.btn-delete').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this.onDeleteSong) this.onDeleteSong(song.id);
+          });
+        }
         card.addEventListener('click', () => {
           if (this.onSelectSong) this.onSelectSong(song.id);
         });

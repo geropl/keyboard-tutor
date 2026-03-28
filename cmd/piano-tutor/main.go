@@ -31,7 +31,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("songs embed: %v", err)
 	}
-	songSvc, err := songs.NewService(songsFS)
+	songsDataDir := filepath.Join(*dataDir, "songs")
+	songSvc, err := songs.NewService(songsFS, songsDataDir)
 	if err != nil {
 		log.Fatalf("load songs: %v", err)
 	}

@@ -5,6 +5,7 @@ import { GameEngine } from './game.js';
 import { Player } from './player.js';
 import { PianoAudio } from './audio.js';
 import { SongListUI } from './songs.js';
+import { ImportEditor } from './import-editor.js';
 import { CompletionScreen } from './progress.js';
 import { COLORS, starsForScore, timingAccuracyFromDelta, colorForAccuracy } from './utils.js';
 import { Config, MODE_PRACTICE, MODE_PERFORMANCE, START_COUNTDOWN, START_FIRST_KEYPRESS } from './config.js';
@@ -25,6 +26,7 @@ class App {
     // Screens
     this.songListScreen = document.getElementById('song-list-screen');
     this.playScreen = document.getElementById('play-screen');
+    this.importScreen = document.getElementById('import-screen');
     this.completionOverlay = document.getElementById('completion-overlay');
 
     // Playing view elements
@@ -35,6 +37,14 @@ class App {
     this.songListUI = new SongListUI(this.songListScreen, this.config);
     this.songListUI.onSelectSong = (id) => this._playSong(id);
     this.songListUI.onPreviewSong = (id) => this._previewSong(id);
+    this.songListUI.onImportMidi = () => this._openMidiFilePicker();
+    this.songListUI.onDeleteSong = (id) => this._deleteSong(id);
+    this.songListUI.onEditSong = (id) => this._editSong(id);
+
+    // Import editor
+    this.importEditor = new ImportEditor(this.importScreen);
+    this.importEditor.onSave = (songJson, editId) => this._saveImportedSong(songJson, editId);
+    this.importEditor.onCancel = () => this._showSongList();
 
     // Completion screen
     this.completionScreen = new CompletionScreen(this.completionOverlay);
@@ -107,6 +117,7 @@ class App {
     this.previewMode = false;
     this._setControlsMode('game');
     this.playScreen.style.display = 'none';
+    this.importScreen.style.display = 'none';
     this.songListScreen.style.display = 'block';
     await this.songListUI.load();
     this.allSongs = this.songListUI.songs;
@@ -363,6 +374,104 @@ class App {
     // Show completion
     const title = this.game.song?.title || this.currentSongId;
     this.completionScreen.show(result, title);
+  }
+
+  // --- Import flow ---
+
+  _openMidiFilePicker() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.mid,.midi';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        this._openImportEditor(reader.result, file.name);
+      };
+      reader.readAsArrayBuffer(file);
+    };
+    input.click();
+  }
+
+  _openImportEditor(arrayBuffer, fileName) {
+    this.game.stop();
+    this.player.stop();
+    this.audio.stopAll();
+    this._audioHandles.clear();
+    this.previewMode = false;
+
+    this.songListScreen.style.display = 'none';
+    this.playScreen.style.display = 'none';
+    this.importScreen.style.display = 'block';
+
+    const ok = this.importEditor.openWithMidi(arrayBuffer, fileName);
+    if (!ok) {
+      // Parse failed — onCancel already called, which shows song list
+      return;
+    }
+  }
+
+  async _editSong(songId) {
+    const res = await fetch(`/api/songs/${songId}`);
+    if (!res.ok) {
+      alert('Failed to load song for editing.');
+      return;
+    }
+    const song = await res.json();
+
+    this.songListScreen.style.display = 'none';
+    this.playScreen.style.display = 'none';
+    this.importScreen.style.display = 'block';
+
+    this.importEditor.openForEdit(song);
+  }
+
+  async _saveImportedSong(songJson, editId) {
+    try {
+      let res;
+      if (editId) {
+        res = await fetch(`/api/songs/${editId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(songJson),
+        });
+      } else {
+        res = await fetch('/api/songs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(songJson),
+        });
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        alert('Failed to save song: ' + (err.error || res.statusText));
+        return;
+      }
+
+      this.importEditor.destroy();
+      this._showSongList();
+    } catch (e) {
+      alert('Failed to save song: ' + e.message);
+    }
+  }
+
+  async _deleteSong(songId) {
+    if (!confirm('Delete this imported song? This cannot be undone.')) return;
+
+    try {
+      const res = await fetch(`/api/songs/${songId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        alert('Failed to delete song: ' + (err.error || res.statusText));
+        return;
+      }
+      await this.songListUI.load();
+      this.songListUI.render();
+    } catch (e) {
+      alert('Failed to delete song: ' + e.message);
+    }
   }
 
   _buildTimingMap() {

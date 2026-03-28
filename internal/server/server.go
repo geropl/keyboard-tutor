@@ -28,7 +28,7 @@ func New(cfg Config) http.Handler {
 	}
 
 	// API routes
-	mux.HandleFunc("/api/songs/", h.SongGet)
+	mux.HandleFunc("/api/songs/", h.SongByID)
 	mux.HandleFunc("/api/songs", h.SongList)
 	mux.HandleFunc("/api/progress", h.ProgressGet)
 
