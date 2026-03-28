@@ -114,7 +114,7 @@ func TestSongGetNotFound(t *testing.T) {
 
 func TestProgressGetHandler(t *testing.T) {
 	prog := testProgress(t)
-	prog.Save("mary", 85, 2, "practice")
+	prog.Save("mary", 85, 2, "practice", 0)
 
 	h := &Handlers{Songs: testSongService(t), Progress: prog}
 

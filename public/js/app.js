@@ -6,7 +6,7 @@ import { Player } from './player.js';
 import { PianoAudio } from './audio.js';
 import { SongListUI } from './songs.js';
 import { CompletionScreen } from './progress.js';
-import { COLORS, starsForScore } from './utils.js';
+import { COLORS, starsForScore, timingAccuracyFromDelta, colorForAccuracy } from './utils.js';
 import { Config, MODE_PRACTICE, MODE_PERFORMANCE, START_COUNTDOWN, START_FIRST_KEYPRESS } from './config.js';
 
 class App {
@@ -317,7 +317,9 @@ class App {
 
     const result = this.game.noteOn(e.note);
     if (result.hit) {
-      const color = result.hand === 'left' ? COLORS.leftHand : COLORS.correct;
+      // Use accuracy-based color instead of uniform hit color
+      const accuracy = timingAccuracyFromDelta(result.onDeltaMs);
+      const color = colorForAccuracy(accuracy);
       this.keyboard.pressKey(e.note, color);
     } else {
       this.keyboard.flash(e.note, COLORS.wrong, 300);
@@ -330,8 +332,21 @@ class App {
 
   _onNoteOff(e) {
     if (this.previewMode) return;
+
+    // Capture the release timing entry before calling noteOff
     this.game.noteOff(e.note);
     this.keyboard.releaseKey(e.note);
+
+    // Flash release-accuracy color if we have a timing entry for this note
+    for (let i = this.game.timingLog.length - 1; i >= 0; i--) {
+      const entry = this.game.timingLog[i];
+      if (entry.note === e.note && entry.offDeltaMs !== null) {
+        const releaseAccuracy = timingAccuracyFromDelta(entry.offDeltaMs);
+        const releaseColor = colorForAccuracy(releaseAccuracy);
+        this.keyboard.flash(e.note, releaseColor, 300);
+        break;
+      }
+    }
   }
 
   _onSongComplete(result) {
@@ -342,11 +357,23 @@ class App {
       score: result.score,
       stars: result.stars,
       mode: this.config.mode,
+      accuracy: result.accuracy,
     });
 
     // Show completion
     const title = this.game.song?.title || this.currentSongId;
     this.completionScreen.show(result, title);
+  }
+
+  _buildTimingMap() {
+    // Build a Map from note object → timing entry for the waterfall
+    const map = new Map();
+    for (const entry of this.game.timingLog) {
+      if (entry._noteObj) {
+        map.set(entry._noteObj, entry);
+      }
+    }
+    return map;
   }
 
   _renderLoop(now) {
@@ -358,6 +385,7 @@ class App {
         this.player.allNotes,
         new Set(),  // no hit tracking in preview
         new Set(),  // no active slice
+        null,       // no timing markers in preview
       );
     } else {
       // Game mode
@@ -373,11 +401,13 @@ class App {
         this.keyboard.clearHints();
       }
 
+      this.waterfall.setTempo(this.game.tempo);
       this.waterfall.draw(
         this.game.currentBeat,
         this.game.allNotes,
         this.game.hitNotes,
         this.game.getActiveSliceNotes(),
+        this._buildTimingMap(),
       );
     }
 

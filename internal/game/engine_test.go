@@ -40,7 +40,7 @@ func ns(note int, start, dur float64) struct{ Note int; Start float64; Duration 
 func startGame(s Song) *Engine {
 	e := NewEngine()
 	e.LoadSong(s)
-	e.Start()
+	e.Start(0)
 	return e
 }
 
@@ -51,7 +51,7 @@ func TestSingleNote_HitAdvances(t *testing.T) {
 		ns(60, 0, 1), ns(62, 1, 1),
 	}, "right"), 120))
 
-	r := e.NoteOn(60)
+	r := e.NoteOn(60, 0)
 	if !r.Hit {
 		t.Error("expected hit")
 	}
@@ -71,7 +71,7 @@ func TestSingleNote_WrongNoteMisses(t *testing.T) {
 		ns(60, 0, 1),
 	}, "right"), 120))
 
-	r := e.NoteOn(61)
+	r := e.NoteOn(61, 0)
 	if r.Hit {
 		t.Error("expected miss")
 	}
@@ -93,9 +93,9 @@ func TestSingleNote_AllNotesCompletesSong(t *testing.T) {
 	}, "right"), 120))
 	e.OnComplete = func(r CompletionResult) { result = &r }
 
-	e.NoteOn(60)
-	e.NoteOff(60)
-	e.NoteOn(62)
+	e.NoteOn(60, 0)
+	e.NoteOff(60, 0)
+	e.NoteOn(62, 0)
 
 	if !e.Completed {
 		t.Error("expected completed")
@@ -122,7 +122,7 @@ func TestSingleNote_CurrentBeatAdvances(t *testing.T) {
 		ns(60, 4, 1), ns(62, 5, 1),
 	}, "right"), 120))
 
-	e.NoteOn(60)
+	e.NoteOn(60, 0)
 	if e.CurrentBeat != 4 {
 		t.Errorf("expected currentBeat 4, got %f", e.CurrentBeat)
 	}
@@ -135,7 +135,7 @@ func TestChord_SingleKeyDoesNotAdvance(t *testing.T) {
 		ns(60, 0, 1), ns(64, 0, 1),
 	}, "right"), 120))
 
-	r := e.NoteOn(60)
+	r := e.NoteOn(60, 0)
 	if !r.Hit {
 		t.Error("first key should register as hit")
 	}
@@ -152,8 +152,8 @@ func TestChord_BothKeysAdvances(t *testing.T) {
 		ns(60, 0, 1), ns(64, 0, 1), ns(67, 1, 1),
 	}, "right"), 120))
 
-	e.NoteOn(60)
-	e.NoteOn(64) // chord complete
+	e.NoteOn(60, 0)
+	e.NoteOn(64, 0) // chord complete
 
 	if e.Hits != 2 {
 		t.Errorf("expected 2 hits, got %d", e.Hits)
@@ -171,9 +171,9 @@ func TestChord_ReleaseBeforeCompleteDoesNotAdvance(t *testing.T) {
 		ns(60, 0, 1), ns(64, 0, 1),
 	}, "right"), 120))
 
-	e.NoteOn(60)
-	e.NoteOff(60) // released before second key
-	e.NoteOn(64)  // only 64 held
+	e.NoteOn(60, 0)
+	e.NoteOff(60, 0) // released before second key
+	e.NoteOn(64, 0)  // only 64 held
 
 	if e.Hits != 0 {
 		t.Errorf("chord should not complete, got %d hits", e.Hits)
@@ -188,14 +188,14 @@ func TestChord_RepressAfterReleaseCompletes(t *testing.T) {
 		ns(60, 0, 1), ns(64, 0, 1),
 	}, "right"), 120))
 
-	e.NoteOn(60)
-	e.NoteOff(60)
-	e.NoteOn(64)
+	e.NoteOn(60, 0)
+	e.NoteOff(60, 0)
+	e.NoteOn(64, 0)
 	if e.Hits != 0 {
 		t.Error("should not be complete yet")
 	}
 
-	e.NoteOn(60) // now both held
+	e.NoteOn(60, 0) // now both held
 	if e.Hits != 2 {
 		t.Errorf("expected 2 hits, got %d", e.Hits)
 	}
@@ -206,15 +206,15 @@ func TestChord_ThreeNotes(t *testing.T) {
 		ns(60, 0, 1), ns(64, 0, 1), ns(67, 0, 1),
 	}, "right"), 120))
 
-	e.NoteOn(60)
+	e.NoteOn(60, 0)
 	if e.Hits != 0 {
 		t.Error("not complete after 1")
 	}
-	e.NoteOn(64)
+	e.NoteOn(64, 0)
 	if e.Hits != 0 {
 		t.Error("not complete after 2")
 	}
-	e.NoteOn(67) // all three held
+	e.NoteOn(67, 0) // all three held
 	if e.Hits != 3 {
 		t.Errorf("expected 3 hits, got %d", e.Hits)
 	}
@@ -228,8 +228,8 @@ func TestChord_WrongNoteDuringChord(t *testing.T) {
 		ns(60, 0, 1), ns(64, 0, 1),
 	}, "right"), 120))
 
-	e.NoteOn(60)
-	e.NoteOn(62) // wrong
+	e.NoteOn(60, 0)
+	e.NoteOn(62, 0) // wrong
 	if e.Misses != 1 {
 		t.Errorf("expected 1 miss, got %d", e.Misses)
 	}
@@ -241,7 +241,7 @@ func TestChord_WrongNoteDuringChord(t *testing.T) {
 	}
 
 	// Can still complete
-	e.NoteOn(64)
+	e.NoteOn(64, 0)
 	if e.Hits != 2 {
 		t.Errorf("expected 2 hits after completing chord, got %d", e.Hits)
 	}
@@ -255,7 +255,7 @@ func TestTwoHands_RequiresBothHeld(t *testing.T) {
 		[]struct{ Note int; Start float64; Duration float64 }{ns(48, 0, 1)},
 	), 120))
 
-	r1 := e.NoteOn(64)
+	r1 := e.NoteOn(64, 0)
 	if !r1.Hit {
 		t.Error("expected hit")
 	}
@@ -266,7 +266,7 @@ func TestTwoHands_RequiresBothHeld(t *testing.T) {
 		t.Error("should not advance with only one hand")
 	}
 
-	r2 := e.NoteOn(48)
+	r2 := e.NoteOn(48, 0)
 	if !r2.Hit {
 		t.Error("expected hit")
 	}
@@ -284,11 +284,11 @@ func TestTwoHands_CorrectHandReported(t *testing.T) {
 		[]struct{ Note int; Start float64; Duration float64 }{ns(48, 0, 1)},
 	), 120))
 
-	r1 := e.NoteOn(48)
+	r1 := e.NoteOn(48, 0)
 	if r1.Hand != "left" {
 		t.Errorf("expected left, got %q", r1.Hand)
 	}
-	r2 := e.NoteOn(64)
+	r2 := e.NoteOn(64, 0)
 	if r2.Hand != "right" {
 		t.Errorf("expected right, got %q", r2.Hand)
 	}
@@ -320,7 +320,7 @@ func TestSliceGrouping_SequentialSeparate(t *testing.T) {
 	if len(e.PendingSlice) != 1 {
 		t.Fatalf("expected 1 in slice, got %d", len(e.PendingSlice))
 	}
-	e.NoteOn(60)
+	e.NoteOn(60, 0)
 	if len(e.PendingSlice) != 1 {
 		t.Fatalf("expected 1 in next slice, got %d", len(e.PendingSlice))
 	}
@@ -362,7 +362,7 @@ func TestScore_100WhenAllHit(t *testing.T) {
 	e := startGame(makeSong(singleTrack([]struct{ Note int; Start float64; Duration float64 }{
 		ns(60, 0, 1),
 	}, "right"), 120))
-	e.NoteOn(60)
+	e.NoteOn(60, 0)
 	if e.GetScore() != 100 {
 		t.Errorf("expected 100, got %d", e.GetScore())
 	}
@@ -375,10 +375,10 @@ func TestScore_MissesInCompletionResult(t *testing.T) {
 	}, "right"), 120))
 	e.OnComplete = func(r CompletionResult) { result = &r }
 
-	e.NoteOn(61) // miss
-	e.NoteOn(60) // hit
-	e.NoteOff(60)
-	e.NoteOn(62) // hit
+	e.NoteOn(61, 0) // miss
+	e.NoteOn(60, 0) // hit
+	e.NoteOff(60, 0)
+	e.NoteOn(62, 0) // hit
 
 	if result == nil {
 		t.Fatal("expected completion")
@@ -402,7 +402,7 @@ func TestCompletion_CorrectStars(t *testing.T) {
 		ns(60, 0, 1),
 	}, "right"), 120))
 	e.OnComplete = func(r CompletionResult) { result = &r }
-	e.NoteOn(60)
+	e.NoteOn(60, 0)
 	if result == nil {
 		t.Fatal("expected completion")
 	}
@@ -418,8 +418,8 @@ func TestCompletion_ChordTriggers(t *testing.T) {
 	}, "right"), 120))
 	e.OnComplete = func(r CompletionResult) { result = &r }
 
-	e.NoteOn(60)
-	e.NoteOn(64)
+	e.NoteOn(60, 0)
+	e.NoteOn(64, 0)
 
 	if !e.Completed {
 		t.Error("expected completed")
@@ -440,7 +440,7 @@ func TestEdge_NoteOnBeforeStart(t *testing.T) {
 		ns(60, 0, 1),
 	}, "right"), 120))
 	// Not started
-	r := e.NoteOn(60)
+	r := e.NoteOn(60, 0)
 	if r.Hit {
 		t.Error("expected miss before start")
 	}
@@ -453,12 +453,12 @@ func TestEdge_NoteOnAfterCompletion(t *testing.T) {
 	e := startGame(makeSong(singleTrack([]struct{ Note int; Start float64; Duration float64 }{
 		ns(60, 0, 1),
 	}, "right"), 120))
-	e.NoteOn(60)
+	e.NoteOn(60, 0)
 	if !e.Completed {
 		t.Fatal("expected completed")
 	}
 
-	r := e.NoteOn(62)
+	r := e.NoteOn(62, 0)
 	if r.Hit {
 		t.Error("expected miss after completion")
 	}
@@ -469,8 +469,8 @@ func TestEdge_DuplicateNoteOnInChord(t *testing.T) {
 		ns(60, 0, 1), ns(64, 0, 1),
 	}, "right"), 120))
 
-	e.NoteOn(60)
-	e.NoteOn(60) // duplicate
+	e.NoteOn(60, 0)
+	e.NoteOn(60, 0) // duplicate
 	if e.Misses != 0 {
 		t.Errorf("duplicate should not count as miss, got %d misses", e.Misses)
 	}
@@ -510,3 +510,205 @@ func TestStarsForScore(t *testing.T) {
 		}
 	}
 }
+
+// --- ComputeAccuracy ---
+
+func floatPtr(f float64) *float64 {
+	return &f
+}
+
+func TestComputeAccuracy_PerfectTiming(t *testing.T) {
+	entries := []TimingEntry{
+		{NoteNum: 60, Hand: "right", OnDeltaMs: 0, OffDeltaMs: floatPtr(0)},
+		{NoteNum: 62, Hand: "right", OnDeltaMs: 0, OffDeltaMs: floatPtr(0)},
+	}
+	got := ComputeAccuracy(entries)
+	if got != 100 {
+		t.Errorf("expected 100, got %d", got)
+	}
+}
+
+func TestComputeAccuracy_Empty(t *testing.T) {
+	got := ComputeAccuracy(nil)
+	if got != 0 {
+		t.Errorf("expected 0, got %d", got)
+	}
+}
+
+func TestComputeAccuracy_WithDeltas(t *testing.T) {
+	// 50ms delta → accuracy ≈ 71.6%, 100ms → ≈ 51.3%
+	entries := []TimingEntry{
+		{NoteNum: 60, Hand: "right", OnDeltaMs: 50, OffDeltaMs: floatPtr(100)},
+	}
+	got := ComputeAccuracy(entries)
+	// Average of ~71.6 and ~51.3 ≈ 61.5 → rounds to 62
+	if got < 60 || got > 63 {
+		t.Errorf("expected ~62, got %d", got)
+	}
+}
+
+func TestComputeAccuracy_NegativeDeltas(t *testing.T) {
+	// Early press/release should use absolute value
+	entries := []TimingEntry{
+		{NoteNum: 60, Hand: "right", OnDeltaMs: -50, OffDeltaMs: floatPtr(-100)},
+	}
+	got := ComputeAccuracy(entries)
+	if got < 60 || got > 63 {
+		t.Errorf("expected ~62, got %d", got)
+	}
+}
+
+func TestComputeAccuracy_OnlyOnDelta(t *testing.T) {
+	// No release recorded yet
+	entries := []TimingEntry{
+		{NoteNum: 60, Hand: "right", OnDeltaMs: 0, OffDeltaMs: nil},
+	}
+	got := ComputeAccuracy(entries)
+	if got != 100 {
+		t.Errorf("expected 100 (only on-delta counted), got %d", got)
+	}
+}
+
+// --- Timing log population ---
+
+func TestTiming_NoteOnRecordsTiming(t *testing.T) {
+	// Tempo 120 = 500ms per beat. Note at beat 0 → expected at startTimeMs.
+	e := NewEngine()
+	e.LoadSong(makeSong(singleTrack([]struct{ Note int; Start float64; Duration float64 }{
+		ns(60, 0, 1),
+	}, "right"), 120))
+	e.Mode = ModePerformance
+	e.Start(1000) // start at 1000ms
+
+	// Press at exactly the right time
+	e.NoteOn(60, 1000)
+	if len(e.TimingLog) != 1 {
+		t.Fatalf("expected 1 timing entry, got %d", len(e.TimingLog))
+	}
+	if e.TimingLog[0].OnDeltaMs != 0 {
+		t.Errorf("expected 0ms delta, got %f", e.TimingLog[0].OnDeltaMs)
+	}
+}
+
+func TestTiming_NoteOnLate(t *testing.T) {
+	e := NewEngine()
+	e.LoadSong(makeSong(singleTrack([]struct{ Note int; Start float64; Duration float64 }{
+		ns(60, 0, 1),
+	}, "right"), 120))
+	e.Mode = ModePerformance
+	e.Start(1000)
+
+	// Press 100ms late
+	e.NoteOn(60, 1100)
+	if len(e.TimingLog) != 1 {
+		t.Fatalf("expected 1 timing entry, got %d", len(e.TimingLog))
+	}
+	if e.TimingLog[0].OnDeltaMs != 100 {
+		t.Errorf("expected 100ms delta, got %f", e.TimingLog[0].OnDeltaMs)
+	}
+}
+
+func TestTiming_PracticeModeOnDeltaAlwaysZero(t *testing.T) {
+	e := NewEngine()
+	e.LoadSong(makeSong(singleTrack([]struct{ Note int; Start float64; Duration float64 }{
+		ns(60, 0, 1),
+	}, "right"), 120))
+	e.Mode = ModePractice
+	e.Start(1000)
+
+	// Press 200ms late — but practice mode should record 0
+	e.NoteOn(60, 1200)
+	if len(e.TimingLog) != 1 {
+		t.Fatalf("expected 1 timing entry, got %d", len(e.TimingLog))
+	}
+	if e.TimingLog[0].OnDeltaMs != 0 {
+		t.Errorf("expected 0ms delta in practice mode, got %f", e.TimingLog[0].OnDeltaMs)
+	}
+}
+
+func TestTiming_NoteOffRecordsTiming(t *testing.T) {
+	// Tempo 120 = 500ms per beat. Note at beat 0, duration 1 → expected end at 500ms after start.
+	e := NewEngine()
+	e.LoadSong(makeSong(singleTrack([]struct{ Note int; Start float64; Duration float64 }{
+		ns(60, 0, 1), ns(62, 1, 1),
+	}, "right"), 120))
+	e.Mode = ModePerformance
+	e.Start(1000)
+
+	e.NoteOn(60, 1000)
+	// Release exactly on time: start(0) + duration(1) = beat 1 → 500ms after start → 1500ms
+	e.NoteOff(60, 1500)
+
+	if e.TimingLog[0].OffDeltaMs == nil {
+		t.Fatal("expected off delta to be recorded")
+	}
+	if *e.TimingLog[0].OffDeltaMs != 0 {
+		t.Errorf("expected 0ms off delta, got %f", *e.TimingLog[0].OffDeltaMs)
+	}
+}
+
+func TestTiming_NoteOffEarly(t *testing.T) {
+	e := NewEngine()
+	e.LoadSong(makeSong(singleTrack([]struct{ Note int; Start float64; Duration float64 }{
+		ns(60, 0, 1), ns(62, 1, 1),
+	}, "right"), 120))
+	e.Mode = ModePerformance
+	e.Start(1000)
+
+	e.NoteOn(60, 1000)
+	// Release 100ms early: expected at 1500ms, release at 1400ms
+	e.NoteOff(60, 1400)
+
+	if e.TimingLog[0].OffDeltaMs == nil {
+		t.Fatal("expected off delta to be recorded")
+	}
+	if *e.TimingLog[0].OffDeltaMs != -100 {
+		t.Errorf("expected -100ms off delta, got %f", *e.TimingLog[0].OffDeltaMs)
+	}
+}
+
+func TestTiming_CompletionIncludesAccuracy(t *testing.T) {
+	var result *CompletionResult
+	e := NewEngine()
+	e.LoadSong(makeSong(singleTrack([]struct{ Note int; Start float64; Duration float64 }{
+		ns(60, 0, 1),
+	}, "right"), 120))
+	e.Mode = ModePerformance
+	e.Start(1000)
+	e.OnComplete = func(r CompletionResult) { result = &r }
+
+	// Perfect timing
+	e.NoteOn(60, 1000)
+
+	if result == nil {
+		t.Fatal("expected completion")
+	}
+	if result.Accuracy != 100 {
+		t.Errorf("expected accuracy 100, got %d", result.Accuracy)
+	}
+}
+
+func TestTiming_ChordRecordsTiming(t *testing.T) {
+	e := NewEngine()
+	e.LoadSong(makeSong(singleTrack([]struct{ Note int; Start float64; Duration float64 }{
+		ns(60, 0, 1), ns(64, 0, 1),
+	}, "right"), 120))
+	e.Mode = ModePerformance
+	e.Start(1000)
+
+	e.NoteOn(60, 1050) // 50ms late
+	e.NoteOn(64, 1100) // 100ms late, completes chord
+
+	if len(e.TimingLog) != 2 {
+		t.Fatalf("expected 2 timing entries, got %d", len(e.TimingLog))
+	}
+	// First note recorded when first pressed
+	if e.TimingLog[0].OnDeltaMs != 50 {
+		t.Errorf("expected 50ms delta for note 60, got %f", e.TimingLog[0].OnDeltaMs)
+	}
+	// Second note recorded when chord completes
+	if e.TimingLog[1].OnDeltaMs != 100 {
+		t.Errorf("expected 100ms delta for note 64, got %f", e.TimingLog[1].OnDeltaMs)
+	}
+}
+

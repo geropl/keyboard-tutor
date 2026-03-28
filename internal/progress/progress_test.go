@@ -47,7 +47,7 @@ func TestNewManagerExistingFile(t *testing.T) {
 
 func TestSaveNewSongPractice(t *testing.T) {
 	m, _ := NewManager(tempFile(t))
-	if err := m.Save("mary", 90, 2, "practice"); err != nil {
+	if err := m.Save("mary", 90, 2, "practice", 0); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 	all := m.GetAll()
@@ -64,7 +64,7 @@ func TestSaveNewSongPractice(t *testing.T) {
 
 func TestSaveNewSongPerformance(t *testing.T) {
 	m, _ := NewManager(tempFile(t))
-	if err := m.Save("mary", 75, 1, "performance"); err != nil {
+	if err := m.Save("mary", 75, 1, "performance", 0); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 	all := m.GetAll()
@@ -81,8 +81,8 @@ func TestSaveNewSongPerformance(t *testing.T) {
 
 func TestSaveBothModes(t *testing.T) {
 	m, _ := NewManager(tempFile(t))
-	m.Save("mary", 90, 2, "practice")
-	m.Save("mary", 70, 1, "performance")
+	m.Save("mary", 90, 2, "practice", 0)
+	m.Save("mary", 70, 1, "performance", 0)
 
 	all := m.GetAll()
 	if all.Songs["mary"].Practice.BestScore != 90 {
@@ -95,8 +95,8 @@ func TestSaveBothModes(t *testing.T) {
 
 func TestSaveOnlyImproves(t *testing.T) {
 	m, _ := NewManager(tempFile(t))
-	m.Save("mary", 90, 2, "practice")
-	m.Save("mary", 70, 1, "practice") // worse, should be ignored
+	m.Save("mary", 90, 2, "practice", 0)
+	m.Save("mary", 70, 1, "practice", 0) // worse, should be ignored
 
 	all := m.GetAll()
 	if all.Songs["mary"].Practice.BestScore != 90 {
@@ -106,8 +106,8 @@ func TestSaveOnlyImproves(t *testing.T) {
 
 func TestSaveImprovedScore(t *testing.T) {
 	m, _ := NewManager(tempFile(t))
-	m.Save("mary", 70, 1, "practice")
-	m.Save("mary", 95, 3, "practice")
+	m.Save("mary", 70, 1, "practice", 0)
+	m.Save("mary", 95, 3, "practice", 0)
 
 	all := m.GetAll()
 	if all.Songs["mary"].Practice.BestScore != 95 {
@@ -117,8 +117,8 @@ func TestSaveImprovedScore(t *testing.T) {
 
 func TestSavePerformanceDoesNotAffectPractice(t *testing.T) {
 	m, _ := NewManager(tempFile(t))
-	m.Save("mary", 90, 2, "practice")
-	m.Save("mary", 60, 1, "performance")
+	m.Save("mary", 90, 2, "practice", 0)
+	m.Save("mary", 60, 1, "performance", 0)
 
 	all := m.GetAll()
 	if all.Songs["mary"].Practice.BestScore != 90 {
@@ -129,7 +129,7 @@ func TestSavePerformanceDoesNotAffectPractice(t *testing.T) {
 func TestSavePersistsToDisk(t *testing.T) {
 	fp := tempFile(t)
 	m, _ := NewManager(fp)
-	m.Save("mary", 80, 2, "practice")
+	m.Save("mary", 80, 2, "practice", 0)
 
 	data, err := os.ReadFile(fp)
 	if err != nil {
@@ -144,7 +144,7 @@ func TestSavePersistsToDisk(t *testing.T) {
 
 func TestGetAllReturnsCopy(t *testing.T) {
 	m, _ := NewManager(tempFile(t))
-	m.Save("mary", 80, 2, "practice")
+	m.Save("mary", 80, 2, "practice", 0)
 
 	all := m.GetAll()
 	all.Songs["mary"].Practice.BestScore = 0
@@ -236,8 +236,8 @@ func TestMigrateOldFormatDoesNotAffectNewFormat(t *testing.T) {
 
 func TestDefaultModeIsPractice(t *testing.T) {
 	m, _ := NewManager(tempFile(t))
-	m.Save("mary", 80, 2, "")
-	m.Save("ode", 70, 1, "unknown")
+	m.Save("mary", 80, 2, "", 0)
+	m.Save("ode", 70, 1, "unknown", 0)
 
 	all := m.GetAll()
 	if all.Songs["mary"].Practice == nil || all.Songs["mary"].Practice.BestScore != 80 {
@@ -247,3 +247,92 @@ func TestDefaultModeIsPractice(t *testing.T) {
 		t.Error("unknown mode should default to practice")
 	}
 }
+
+// --- Accuracy persistence ---
+
+func TestSaveAccuracy(t *testing.T) {
+	m, _ := NewManager(tempFile(t))
+	m.Save("mary", 90, 2, "practice", 85)
+
+	all := m.GetAll()
+	if all.Songs["mary"].Practice.Accuracy != 85 {
+		t.Errorf("expected accuracy 85, got %d", all.Songs["mary"].Practice.Accuracy)
+	}
+}
+
+func TestSaveAccuracyBestValueKept(t *testing.T) {
+	m, _ := NewManager(tempFile(t))
+	m.Save("mary", 90, 2, "practice", 85)
+	// Higher score but lower accuracy — best accuracy should be preserved
+	m.Save("mary", 95, 3, "practice", 70)
+
+	all := m.GetAll()
+	if all.Songs["mary"].Practice.BestScore != 95 {
+		t.Errorf("expected score 95, got %d", all.Songs["mary"].Practice.BestScore)
+	}
+	if all.Songs["mary"].Practice.Accuracy != 85 {
+		t.Errorf("expected accuracy 85 (preserved), got %d", all.Songs["mary"].Practice.Accuracy)
+	}
+}
+
+func TestSaveAccuracyImprovesWithoutScoreImprovement(t *testing.T) {
+	m, _ := NewManager(tempFile(t))
+	m.Save("mary", 90, 2, "practice", 70)
+	// Worse score, better accuracy — accuracy should still improve
+	m.Save("mary", 85, 2, "practice", 90)
+
+	all := m.GetAll()
+	if all.Songs["mary"].Practice.BestScore != 90 {
+		t.Errorf("expected score 90 (unchanged), got %d", all.Songs["mary"].Practice.BestScore)
+	}
+	if all.Songs["mary"].Practice.Accuracy != 90 {
+		t.Errorf("expected accuracy 90 (improved), got %d", all.Songs["mary"].Practice.Accuracy)
+	}
+}
+
+func TestSaveAccuracyPerMode(t *testing.T) {
+	m, _ := NewManager(tempFile(t))
+	m.Save("mary", 90, 2, "practice", 85)
+	m.Save("mary", 80, 2, "performance", 75)
+
+	all := m.GetAll()
+	if all.Songs["mary"].Practice.Accuracy != 85 {
+		t.Errorf("practice accuracy: expected 85, got %d", all.Songs["mary"].Practice.Accuracy)
+	}
+	if all.Songs["mary"].Performance.Accuracy != 75 {
+		t.Errorf("performance accuracy: expected 75, got %d", all.Songs["mary"].Performance.Accuracy)
+	}
+}
+
+func TestOldFormatWithoutAccuracyLoads(t *testing.T) {
+	fp := tempFile(t)
+	os.MkdirAll(filepath.Dir(fp), 0o755)
+
+	// New format but without accuracy field
+	data := `{
+		"songs": {
+			"mary": {
+				"practice": { "bestScore": 90, "stars": 2, "completedAt": "2024-01-01T00:00:00.000Z" }
+			}
+		}
+	}`
+	os.WriteFile(fp, []byte(data), 0o644)
+
+	m, err := NewManager(fp)
+	if err != nil {
+		t.Fatalf("NewManager: %v", err)
+	}
+
+	all := m.GetAll()
+	if all.Songs["mary"].Practice.Accuracy != 0 {
+		t.Errorf("expected accuracy 0 (default), got %d", all.Songs["mary"].Practice.Accuracy)
+	}
+
+	// Should be able to save accuracy on top
+	m.Save("mary", 95, 3, "practice", 80)
+	all = m.GetAll()
+	if all.Songs["mary"].Practice.Accuracy != 80 {
+		t.Errorf("expected accuracy 80 after save, got %d", all.Songs["mary"].Practice.Accuracy)
+	}
+}
+

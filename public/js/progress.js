@@ -27,6 +27,7 @@ export class CompletionScreen {
       <div class="completion-details">
         ${result.hits} / ${result.total} notes hit
         ${result.misses > 0 ? `<br>${result.misses} wrong notes` : ''}
+        ${result.accuracy != null ? `<br>Accuracy: ${result.accuracy}%` : ''}
       </div>
       <div class="completion-buttons">
         <button class="btn btn-secondary" id="btn-retry">Retry</button>

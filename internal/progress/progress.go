@@ -12,6 +12,7 @@ import (
 type ModeProgress struct {
 	BestScore   int    `json:"bestScore"`
 	Stars       int    `json:"stars"`
+	Accuracy    int    `json:"accuracy,omitempty"`
 	CompletedAt string `json:"completedAt"`
 }
 
@@ -129,7 +130,9 @@ func (m *Manager) GetAll() ProgressData {
 }
 
 // Save updates progress for a song in the given mode if the new score is higher.
-func (m *Manager) Save(songID string, score int, stars int, mode string) error {
+// Accuracy is stored independently as best-value (highest accuracy is kept even
+// if the score doesn't improve).
+func (m *Manager) Save(songID string, score int, stars int, mode string, accuracy int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -144,13 +147,24 @@ func (m *Manager) Save(songID string, score int, stars int, mode string) error {
 	}
 
 	if existing != nil && score <= existing.BestScore {
+		// Score didn't improve, but accuracy might have
+		if accuracy > existing.Accuracy {
+			existing.Accuracy = accuracy
+			m.data.Songs[songID] = sp
+			return m.write()
+		}
 		return nil
 	}
 
 	mp := &ModeProgress{
 		BestScore:   score,
 		Stars:       stars,
+		Accuracy:    accuracy,
 		CompletedAt: time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
+	}
+	// Preserve best accuracy from previous entry if it was higher
+	if existing != nil && existing.Accuracy > accuracy {
+		mp.Accuracy = existing.Accuracy
 	}
 
 	switch mode {

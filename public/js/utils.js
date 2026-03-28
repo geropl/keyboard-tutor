@@ -17,6 +17,8 @@ export const COLORS = {
   leftHand: '#E8943A',
   correct: '#4CAF50',
   wrong: '#E53935',
+  timingGood: '#FFC107',
+  timingPoor: '#FF5722',
   hint: 'rgba(74, 144, 217, 0.25)',
   hintLeft: 'rgba(232, 148, 58, 0.25)',
   whiteKey: '#FFFFFF',
@@ -38,6 +40,20 @@ export const COLORS = {
 
 // Difficulty labels
 export const DIFFICULTY_LABELS = ['', 'First Steps', 'Getting Comfortable', 'Both Hands', 'Building Fluency', 'Confident Player'];
+
+// Returns a color based on timing accuracy (0–100).
+// ≥90% → green, ≥60% → yellow/amber, <60% → orange-red.
+const TIMING_TAU = 150;
+
+export function timingAccuracyFromDelta(deltaMs) {
+  return 100 * Math.exp(-Math.abs(deltaMs) / TIMING_TAU);
+}
+
+export function colorForAccuracy(accuracy) {
+  if (accuracy >= 90) return COLORS.correct;
+  if (accuracy >= 60) return COLORS.timingGood;
+  return COLORS.timingPoor;
+}
 
 export function starsForScore(score) {
   if (score >= 95) return 3;

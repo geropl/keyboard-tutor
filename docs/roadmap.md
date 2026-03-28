@@ -27,8 +27,11 @@ Ideas and planned features, roughly ordered by scope.
 
 Better feedback on how well the player performed.
 
-- [ ] Timing accuracy — measure how precisely the player hits note start/end times
-- [ ] Visualize timing on keys (e.g. a sliding indicator showing early/late/on-time)
+- [x] Timing accuracy — measure how precisely the player hits note start/end times
+- [x] Visualize timing on keys (accuracy-based color: green/yellow/orange-red)
+- [x] Waterfall timing markers showing press/release offset
+- [x] Accuracy % on completion screen
+- [x] Persist best accuracy per mode in progress
 
 ## Song Discovery
 

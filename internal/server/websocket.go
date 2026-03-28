@@ -71,17 +71,18 @@ func (h *WSHub) readPump(conn *websocket.Conn) {
 			return
 		}
 		var msg struct {
-			Type   string `json:"type"`
-			SongID string `json:"songId"`
-			Score  int    `json:"score"`
-			Stars  int    `json:"stars"`
-			Mode   string `json:"mode"`
+			Type     string `json:"type"`
+			SongID   string `json:"songId"`
+			Score    int    `json:"score"`
+			Stars    int    `json:"stars"`
+			Mode     string `json:"mode"`
+			Accuracy int    `json:"accuracy"`
 		}
 		if err := json.Unmarshal(data, &msg); err != nil {
 			continue
 		}
 		if msg.Type == "saveProgress" && h.progress != nil {
-			if err := h.progress.Save(msg.SongID, msg.Score, msg.Stars, msg.Mode); err != nil {
+			if err := h.progress.Save(msg.SongID, msg.Score, msg.Stars, msg.Mode, msg.Accuracy); err != nil {
 				log.Printf("save progress: %v", err)
 			}
 		}

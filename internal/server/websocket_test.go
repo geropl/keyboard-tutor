@@ -79,6 +79,41 @@ func TestWebSocketSaveProgress(t *testing.T) {
 	}
 }
 
+func TestWebSocketSaveProgressWithAccuracy(t *testing.T) {
+	fp := filepath.Join(t.TempDir(), "p.json")
+	prog, _ := progress.NewManager(fp)
+	hub := NewWSHub(prog, nil, nil)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", hub.HandleUpgrade)
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	conn := wsConnect(t, s)
+	defer conn.Close()
+
+	msg := map[string]interface{}{
+		"type":     "saveProgress",
+		"songId":   "mary",
+		"score":    95,
+		"stars":    3,
+		"mode":     "practice",
+		"accuracy": 87,
+	}
+	data, _ := json.Marshal(msg)
+	conn.WriteMessage(websocket.TextMessage, data)
+
+	time.Sleep(50 * time.Millisecond)
+
+	all := prog.GetAll()
+	if all.Songs["mary"].Practice == nil {
+		t.Fatal("expected practice progress")
+	}
+	if all.Songs["mary"].Practice.Accuracy != 87 {
+		t.Errorf("expected accuracy 87, got %d", all.Songs["mary"].Practice.Accuracy)
+	}
+}
+
 func TestWebSocketBroadcastNoteOn(t *testing.T) {
 	prog, _ := progress.NewManager(filepath.Join(t.TempDir(), "p.json"))
 	noteOn := make(chan midi.NoteEvent, 1)

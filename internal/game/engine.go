@@ -1,6 +1,8 @@
 package game
 
-import "math"
+import (
+	"math"
+)
 
 // Mode constants
 const (
@@ -33,20 +35,59 @@ type Song struct {
 	Tracks []Track `json:"tracks"`
 }
 
+// TimingEntry records the timing accuracy for a single note hit.
+type TimingEntry struct {
+	NoteNum   int
+	Hand      string
+	OnDeltaMs float64  // ms offset of key press vs expected time (positive = late)
+	OffDeltaMs *float64 // ms offset of key release vs expected end (nil until released)
+}
+
+// timingAccuracy returns 0–100 for a single delta using exponential decay.
+// τ = 150ms: 0ms→100%, 50ms→~72%, 150ms→~37%, 300ms→~14%.
+const timingTau = 150.0
+
+func timingAccuracy(deltaMs float64) float64 {
+	return 100.0 * math.Exp(-math.Abs(deltaMs)/timingTau)
+}
+
+// ComputeAccuracy returns the overall accuracy (0–100) from a timing log.
+func ComputeAccuracy(entries []TimingEntry) int {
+	if len(entries) == 0 {
+		return 0
+	}
+	var sum float64
+	var count int
+	for _, e := range entries {
+		sum += timingAccuracy(e.OnDeltaMs)
+		count++
+		if e.OffDeltaMs != nil {
+			sum += timingAccuracy(*e.OffDeltaMs)
+			count++
+		}
+	}
+	if count == 0 {
+		return 0
+	}
+	return int(math.Round(sum / float64(count)))
+}
+
 // CompletionResult is emitted when a song finishes.
 type CompletionResult struct {
-	Score  int
-	Stars  int
-	Hits   int
-	Misses int
-	Total  int
+	Score    int
+	Stars    int
+	Hits     int
+	Misses   int
+	Total    int
+	Accuracy int
 }
 
 // NoteOnResult is returned from NoteOn.
 type NoteOnResult struct {
-	Hit  bool
-	Note int
-	Hand string
+	Hit        bool
+	Note       int
+	Hand       string
+	OnDeltaMs  float64 // timing delta for this press (only meaningful when Hit is true)
 }
 
 // StarsForScore returns 0-3 stars based on score percentage.
@@ -78,6 +119,11 @@ type Engine struct {
 	LastFrame    *float64 // nil = not set
 	PendingSlice []*Note
 	OnComplete   func(CompletionResult)
+
+	// Timing tracking
+	TimingLog    []TimingEntry
+	StartTimeMs  float64        // wall-clock ms when playback started
+	noteToTiming map[*Note]int  // maps a hit note to its TimingLog index
 
 	physicalKeys map[int]bool
 	sliceMatches map[int]bool // partial chord tracking
@@ -124,6 +170,9 @@ func (e *Engine) LoadSong(s Song) {
 	e.Playing = false
 	e.Completed = false
 	e.LastFrame = nil
+	e.TimingLog = nil
+	e.noteToTiming = make(map[*Note]int)
+	e.StartTimeMs = 0
 	e.physicalKeys = make(map[int]bool)
 	e.sliceMatches = nil
 	e.computePendingSlice()
@@ -149,9 +198,10 @@ func less(a, b *Note) bool {
 	return a.NoteNum < b.NoteNum
 }
 
-// Start begins playback.
-func (e *Engine) Start() {
+// Start begins playback. nowMs is the current wall-clock time in ms.
+func (e *Engine) Start(nowMs float64) {
 	e.Playing = true
+	e.StartTimeMs = nowMs
 	// LastFrame is set on first Update call
 }
 
@@ -194,8 +244,33 @@ func (e *Engine) GetActiveSliceNotes() map[*Note]bool {
 	return m
 }
 
-// NoteOn processes a MIDI note-on event.
-func (e *Engine) NoteOn(midiNote int) NoteOnResult {
+// beatToMs converts a beat position to milliseconds from song start.
+func (e *Engine) beatToMs(beat float64) float64 {
+	return beat * 60000.0 / e.Tempo
+}
+
+// recordNoteOn creates a TimingEntry for a hit note.
+func (e *Engine) recordNoteOn(note *Note, nowMs float64) float64 {
+	expectedMs := e.beatToMs(note.Start) + e.StartTimeMs
+	var onDelta float64
+	if e.Mode == ModePractice {
+		onDelta = 0 // practice mode waits, so press is always on-time
+	} else {
+		onDelta = nowMs - expectedMs
+	}
+	entry := TimingEntry{
+		NoteNum:   note.NoteNum,
+		Hand:      note.Hand,
+		OnDeltaMs: onDelta,
+	}
+	idx := len(e.TimingLog)
+	e.TimingLog = append(e.TimingLog, entry)
+	e.noteToTiming[note] = idx
+	return onDelta
+}
+
+// NoteOn processes a MIDI note-on event. nowMs is the current wall-clock time in ms.
+func (e *Engine) NoteOn(midiNote int, nowMs float64) NoteOnResult {
 	e.physicalKeys[midiNote] = true
 
 	if !e.Playing || e.Completed {
@@ -216,11 +291,12 @@ func (e *Engine) NoteOn(midiNote int) NoteOnResult {
 
 		// Single-note slice: register hit immediately
 		if len(e.PendingSlice) == 1 {
+			onDelta := e.recordNoteOn(matched, nowMs)
 			e.HitNotes[matched] = true
 			e.Hits++
 			e.PendingSlice = append(e.PendingSlice[:matchIdx], e.PendingSlice[matchIdx+1:]...)
 			e.advancePastSlice(matched.Start)
-			return NoteOnResult{Hit: true, Note: midiNote, Hand: matched.Hand}
+			return NoteOnResult{Hit: true, Note: midiNote, Hand: matched.Hand, OnDeltaMs: onDelta}
 		}
 
 		// Chord: track partial matches, confirm when all held
@@ -238,9 +314,21 @@ func (e *Engine) NoteOn(midiNote int) NoteOnResult {
 			}
 		}
 
+		// Record timing for this note if not already recorded
+		var onDelta float64
+		if _, alreadyRecorded := e.noteToTiming[matched]; !alreadyRecorded {
+			onDelta = e.recordNoteOn(matched, nowMs)
+		} else {
+			onDelta = e.TimingLog[e.noteToTiming[matched]].OnDeltaMs
+		}
+
 		if allHeld {
 			sliceStart := e.PendingSlice[0].Start
 			for _, n := range e.PendingSlice {
+				// Record timing for chord notes not yet recorded
+				if _, alreadyRecorded := e.noteToTiming[n]; !alreadyRecorded {
+					e.recordNoteOn(n, nowMs)
+				}
 				e.HitNotes[n] = true
 				e.Hits++
 			}
@@ -249,19 +337,36 @@ func (e *Engine) NoteOn(midiNote int) NoteOnResult {
 			e.advancePastSlice(sliceStart)
 		}
 
-		return NoteOnResult{Hit: true, Note: midiNote, Hand: matched.Hand}
+		return NoteOnResult{Hit: true, Note: midiNote, Hand: matched.Hand, OnDeltaMs: onDelta}
 	}
 
 	e.Misses++
 	return NoteOnResult{Hit: false, Note: midiNote}
 }
 
-// NoteOff processes a MIDI note-off event.
-func (e *Engine) NoteOff(midiNote int) {
+// NoteOff processes a MIDI note-off event. nowMs is the current wall-clock time in ms.
+func (e *Engine) NoteOff(midiNote int, nowMs float64) {
 	delete(e.physicalKeys, midiNote)
 	// Clear partial chord matches when a key is released
 	if e.sliceMatches != nil {
 		e.sliceMatches = nil
+	}
+
+	// Record release timing for the most recent hit of this note
+	for i := len(e.TimingLog) - 1; i >= 0; i-- {
+		entry := &e.TimingLog[i]
+		if entry.NoteNum == midiNote && entry.OffDeltaMs == nil {
+			// Find the corresponding note to get expected end time
+			for note, idx := range e.noteToTiming {
+				if idx == i {
+					expectedEndMs := e.beatToMs(note.Start+note.Duration) + e.StartTimeMs
+					offDelta := nowMs - expectedEndMs
+					entry.OffDeltaMs = &offDelta
+					break
+				}
+			}
+			break
+		}
 	}
 }
 
@@ -283,14 +388,16 @@ func (e *Engine) completeSong() {
 		score = int(math.Round(float64(e.Hits) / float64(e.TotalNotes) * 100))
 	}
 	stars := StarsForScore(score)
+	accuracy := ComputeAccuracy(e.TimingLog)
 
 	if e.OnComplete != nil {
 		e.OnComplete(CompletionResult{
-			Score:  score,
-			Stars:  stars,
-			Hits:   e.Hits,
-			Misses: e.Misses,
-			Total:  e.TotalNotes,
+			Score:    score,
+			Stars:    stars,
+			Hits:     e.Hits,
+			Misses:   e.Misses,
+			Total:    e.TotalNotes,
+			Accuracy: accuracy,
 		})
 	}
 }

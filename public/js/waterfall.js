@@ -1,4 +1,4 @@
-import { COLORS, isBlackKey } from './utils.js';
+import { COLORS, isBlackKey, timingAccuracyFromDelta, colorForAccuracy } from './utils.js';
 
 const NOTE_GAP = 6; // pixels between consecutive notes for visual separation
 
@@ -8,9 +8,14 @@ export class Waterfall {
     this.ctx = canvas.getContext('2d');
     this.keyboard = keyboard;
     this.beatsVisible = 8; // how many beats of lookahead
+    this._tempo = 120;
     this._resizeHandler = () => this._resize();
     window.addEventListener('resize', this._resizeHandler);
     this._resize();
+  }
+
+  setTempo(tempo) {
+    this._tempo = tempo;
   }
 
   resize() {
@@ -29,7 +34,7 @@ export class Waterfall {
     this.height = rect.height;
   }
 
-  draw(currentBeat, songNotes, hitNotes, activeSliceNotes) {
+  draw(currentBeat, songNotes, hitNotes, activeSliceNotes, timingMap) {
     const ctx = this.ctx;
     if (!this.width || !this.height) return; // not yet sized
 
@@ -141,6 +146,31 @@ export class Waterfall {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(label, x, yTop + h / 2);
+      }
+
+      // Timing markers for hit notes
+      if (isHit && timingMap) {
+        const timing = timingMap.get(note);
+        if (timing) {
+          const markerH = 2;
+          const markerW = w;
+
+          // Note-on marker: offset from the note's start position (bottom of block)
+          const onOffsetBeats = (timing.onDeltaMs / 60000) * (this._tempo || 120);
+          const onMarkerY = yBottom - onOffsetBeats * pixelsPerBeat;
+          const onAccuracy = timingAccuracyFromDelta(timing.onDeltaMs);
+          ctx.fillStyle = colorForAccuracy(onAccuracy);
+          ctx.fillRect(x - markerW / 2, onMarkerY - markerH / 2, markerW, markerH);
+
+          // Note-off marker: offset from the note's end position (top of block)
+          if (timing.offDeltaMs !== null) {
+            const offOffsetBeats = (timing.offDeltaMs / 60000) * (this._tempo || 120);
+            const offMarkerY = yTop - offOffsetBeats * pixelsPerBeat;
+            const offAccuracy = timingAccuracyFromDelta(timing.offDeltaMs);
+            ctx.fillStyle = colorForAccuracy(offAccuracy);
+            ctx.fillRect(x - markerW / 2, offMarkerY - markerH / 2, markerW, markerH);
+          }
+        }
       }
     }
 
