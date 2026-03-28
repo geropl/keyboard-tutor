@@ -60,14 +60,19 @@ class App {
 
     // Connection status
     const statusEl = document.getElementById('connection-status');
-    this.connection.on('open', () => {
+    const setConnected = () => {
       statusEl.textContent = 'Connected';
       statusEl.className = 'status connected';
-    });
+    };
+    this.connection.on('open', setConnected);
     this.connection.on('close', () => {
       statusEl.textContent = 'Reconnecting...';
       statusEl.className = 'status disconnected';
     });
+    // If WebSocket already connected before listeners were registered
+    if (this.connection.ws?.readyState === WebSocket.OPEN) {
+      setConnected();
+    }
 
     // Game completion
     this.game.onComplete = (result) => this._onSongComplete(result);
@@ -103,17 +108,24 @@ class App {
     document.getElementById('song-title').textContent = `${song.title} - ${song.composer}`;
     document.getElementById('score-display').textContent = '0%';
 
+    // Destroy old keyboard to remove stale resize listeners
+    this.keyboard.destroy();
+
     // Adjust keyboard range to song
     const noteNums = song.tracks.flatMap(t => t.notes.map(n => n.note));
-    if (noteNums.length > 0) {
-      const minNote = Math.min(...noteNums);
-      const maxNote = Math.max(...noteNums);
-      // Expand range to include some padding and align to C
-      const low = Math.max(21, Math.floor((minNote - 5) / 12) * 12);
-      const high = Math.min(108, Math.ceil((maxNote + 5) / 12) * 12);
-      this.keyboard = new PianoKeyboard(document.getElementById('keyboard-canvas'), low, high);
-      this.waterfall.keyboard = this.keyboard;
-    }
+    const minNote = noteNums.length > 0 ? Math.min(...noteNums) : 48;
+    const maxNote = noteNums.length > 0 ? Math.max(...noteNums) : 84;
+    // Expand range to include some padding and align to C
+    const low = Math.max(21, Math.floor((minNote - 5) / 12) * 12);
+    const high = Math.min(108, Math.ceil((maxNote + 5) / 12) * 12);
+    this.keyboard = new PianoKeyboard(document.getElementById('keyboard-canvas'), low, high);
+    this.waterfall.keyboard = this.keyboard;
+
+    // Force resize now that the play screen is visible and layout has settled
+    // Use rAF to ensure the browser has computed layout
+    await new Promise(r => requestAnimationFrame(r));
+    this.keyboard.resize();
+    this.waterfall.resize();
 
     // Reset tempo slider
     const tempoSlider = document.getElementById('tempo-slider');

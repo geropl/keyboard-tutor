@@ -8,12 +8,24 @@ export class PianoKeyboard {
     this.highNote = highNote; // C6
     this.pressedKeys = new Map(); // note -> color
     this.flashKeys = new Map();   // note -> { color, expiry }
+    this.whiteKeys = [];
+    this.blackKeys = [];
+    this._resizeHandler = () => this._resize();
+    window.addEventListener('resize', this._resizeHandler);
     this._resize();
-    window.addEventListener('resize', () => this._resize());
+  }
+
+  destroy() {
+    window.removeEventListener('resize', this._resizeHandler);
+  }
+
+  resize() {
+    this._resize();
   }
 
   _resize() {
     const rect = this.canvas.parentElement.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return; // skip if hidden
     this.canvas.width = rect.width * devicePixelRatio;
     this.canvas.height = rect.height * devicePixelRatio;
     this.canvas.style.width = rect.width + 'px';

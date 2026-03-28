@@ -26,8 +26,8 @@
         { "note": 62, "start": 10, "duration": 1 },
         { "note": 64, "start": 11, "duration": 1 },
 
-        { "note": 64, "start": 12, "duration": 1.5 },
-        { "note": 62, "start": 13.5, "duration": 0.5 },
+        { "note": 64, "start": 12, "duration": 1 },
+        { "note": 62, "start": 13, "duration": 1 },
         { "note": 62, "start": 14, "duration": 2 },
 
         { "note": 64, "start": 16, "duration": 1 },
@@ -45,8 +45,8 @@
         { "note": 62, "start": 26, "duration": 1 },
         { "note": 64, "start": 27, "duration": 1 },
 
-        { "note": 62, "start": 28, "duration": 1.5 },
-        { "note": 60, "start": 29.5, "duration": 0.5 },
+        { "note": 62, "start": 28, "duration": 1 },
+        { "note": 60, "start": 29, "duration": 1 },
         { "note": 60, "start": 30, "duration": 2 }
       ]
     }

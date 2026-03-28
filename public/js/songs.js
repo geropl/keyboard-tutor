@@ -21,6 +21,10 @@ export class SongListUI {
   render() {
     this.container.innerHTML = '';
 
+    const inner = document.createElement('div');
+    inner.className = 'song-list-inner';
+    this.container.appendChild(inner);
+
     // Header
     const header = document.createElement('div');
     header.className = 'song-list-header';
@@ -28,7 +32,7 @@ export class SongListUI {
       <h1>Piano Tutor</h1>
       <p class="subtitle">Select a song to start learning</p>
     `;
-    this.container.appendChild(header);
+    inner.appendChild(header);
 
     // Recommended next
     const recommended = this._getRecommended();
@@ -84,7 +88,7 @@ export class SongListUI {
       }
 
       section.appendChild(list);
-      this.container.appendChild(section);
+      inner.appendChild(section);
     }
   }
 
