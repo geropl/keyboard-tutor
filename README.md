@@ -69,6 +69,3 @@ Songs are JSON files in `songs/` with timing in beats (not milliseconds), making
 
 Go backend with embedded static assets, vanilla JavaScript frontend. Single dependency: `gorilla/websocket`. No framework, no bundler, no frontend build step.
 
-### Legacy Node.js
-
-The original Node.js implementation files (`server.js`, `server/`) remain in the repo for reference.
