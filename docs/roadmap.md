@@ -33,6 +33,18 @@ Better feedback on how well the player performed.
 - [x] Accuracy % on completion screen
 - [x] Persist best accuracy per mode in progress
 
+## Web MIDI API Support
+
+The app currently requires the backend to have direct access to the MIDI device.
+Adding Web MIDI API support lets the browser read the local MIDI device directly,
+so the app can be served from any remote host.
+
+- [ ] Add Web MIDI API input source (`navigator.requestMIDIAccess()`)
+- [ ] Device picker UI: list available MIDI inputs, let user select
+- [ ] Connection status indicator distinguishes Web MIDI vs WebSocket
+- [ ] Keep existing WebSocket/backend MIDI path as fallback (local server, Firefox)
+- [ ] Auto-detect: prefer Web MIDI when available, fall back to WebSocket
+
 ## Song Discovery
 
 The core idea: any song, from any source, playable in the app. Users can find
