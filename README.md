@@ -5,11 +5,23 @@ A Flowkey-style piano learning app that connects to a MIDI keyboard and teaches 
 ## Quick Start
 
 ```bash
-npm install
-node server.js
+go build -o piano-tutor ./cmd/piano-tutor/
+./piano-tutor
 ```
 
 Open `http://localhost:3000` in your browser. Connect your MIDI keyboard (tested with Kawai CA63 via USB).
+
+The binary embeds all frontend assets and song data — no additional files needed to run.
+
+### Options
+
+```
+-port 3000        HTTP server port
+-midi /dev/midi1  MIDI device path
+-data ./data      Directory for progress data
+```
+
+The server starts without a MIDI device if one isn't available.
 
 ## Features
 
@@ -22,22 +34,32 @@ Open `http://localhost:3000` in your browser. Connect your MIDI keyboard (tested
 
 ## Requirements
 
-- Node.js 18+
-- A MIDI keyboard connected at `/dev/midi1` (Linux raw MIDI device)
+- Go 1.22+
+- A MIDI keyboard connected at `/dev/midi1` (Linux raw MIDI device) — optional
 
 ## Project Structure
 
 ```
-server.js              Entry point (HTTP + WebSocket + MIDI)
-server/
-  midi.js              MIDI reader and parser
-  websocket.js         WebSocket bridge for note events
-  songs.js             Song loading and API
-  progress.js          Progress persistence
+cmd/piano-tutor/       Entry point, flag parsing, wiring
+internal/
+  midi/                MIDI reader interface + raw /dev/midi* implementation
+  server/              HTTP server, REST handlers, WebSocket bridge
+  songs/               Song loading from embedded FS
+  progress/            Progress persistence (JSON file)
+  game/                Game engine (ported from JS for testing)
+embed.go               go:embed directives for public/ and songs/
 public/                Browser frontend (vanilla JS, no build step)
 songs/                 Song library (JSON files)
 data/                  User progress (created at runtime)
 ```
+
+## Testing
+
+```bash
+go test ./...
+```
+
+Tests cover: game engine logic (ported from JS test suite), MIDI byte parser, song loading, progress persistence, HTTP handlers, and WebSocket message flow.
 
 ## Song Format
 
@@ -45,4 +67,8 @@ Songs are JSON files in `songs/` with timing in beats (not milliseconds), making
 
 ## Tech Stack
 
-Node.js backend, vanilla JavaScript frontend, single npm dependency (`ws`). No framework, no bundler, no build step.
+Go backend with embedded static assets, vanilla JavaScript frontend. Single dependency: `gorilla/websocket`. No framework, no bundler, no frontend build step.
+
+### Legacy Node.js
+
+The original Node.js implementation files (`server.js`, `server/`) remain in the repo for reference.

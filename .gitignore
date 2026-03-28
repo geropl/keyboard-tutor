@@ -1,0 +1,18 @@
+# Go binary
+/piano-tutor
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Node (legacy)
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store

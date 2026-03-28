@@ -7,7 +7,7 @@ export class Connection {
 
   _connect() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    this.ws = new WebSocket(`${protocol}//${location.host}`);
+    this.ws = new WebSocket(`${protocol}//${location.host}/ws`);
     this.ws.onopen = () => this._emit('open');
     this.ws.onclose = () => {
       this._emit('close');
