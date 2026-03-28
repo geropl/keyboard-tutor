@@ -8,6 +8,7 @@ export class SongListUI {
     this.songs = [];
     this.progress = {};
     this.onSelectSong = null;
+    this.onPreviewSong = null;
   }
 
   async load() {
@@ -94,7 +95,12 @@ export class SongListUI {
             ${prog ? `<div class="best-score">${prog.bestScore}%</div>` : ''}
           </div>
           <div class="song-skill">${song.skillFocus || ''}</div>
+          <button class="btn-preview" title="Preview song">&#9654;</button>
         `;
+        card.querySelector('.btn-preview').addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (this.onPreviewSong) this.onPreviewSong(song.id);
+        });
         card.addEventListener('click', () => {
           if (this.onSelectSong) this.onSelectSong(song.id);
         });

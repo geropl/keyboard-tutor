@@ -2,6 +2,8 @@ import { Connection } from './connection.js';
 import { PianoKeyboard } from './keyboard.js';
 import { Waterfall } from './waterfall.js';
 import { GameEngine } from './game.js';
+import { Player } from './player.js';
+import { PianoAudio } from './audio.js';
 import { SongListUI } from './songs.js';
 import { CompletionScreen } from './progress.js';
 import { COLORS, starsForScore } from './utils.js';
@@ -12,9 +14,13 @@ class App {
     this.config = new Config();
     this.connection = new Connection();
     this.game = new GameEngine();
+    this.player = new Player();
+    this.audio = new PianoAudio();
     this.currentSongId = null;
     this.songList = null;
     this.allSongs = [];
+    this.previewMode = false;
+    this._audioHandles = new Map(); // midiNote -> audio handle
 
     // Screens
     this.songListScreen = document.getElementById('song-list-screen');
@@ -28,6 +34,7 @@ class App {
     // Song list
     this.songListUI = new SongListUI(this.songListScreen, this.config);
     this.songListUI.onSelectSong = (id) => this._playSong(id);
+    this.songListUI.onPreviewSong = (id) => this._previewSong(id);
 
     // Completion screen
     this.completionScreen = new CompletionScreen(this.completionOverlay);
@@ -54,7 +61,9 @@ class App {
       const pct = parseInt(tempoSlider.value);
       tempoLabel.textContent = pct + '%';
       this.config.tempoPercent = pct;
-      if (this.game.song) {
+      if (this.previewMode && this.player.song) {
+        this.player.setTempo(this.player.song.tempo * pct / 100);
+      } else if (this.game.song) {
         this.game.setTempo(this.game.song.tempo * pct / 100);
       }
     };
@@ -92,6 +101,11 @@ class App {
 
   async _showSongList() {
     this.game.stop();
+    this.player.stop();
+    this.audio.stopAll();
+    this._audioHandles.clear();
+    this.previewMode = false;
+    this._setControlsMode('game');
     this.playScreen.style.display = 'none';
     this.songListScreen.style.display = 'block';
     await this.songListUI.load();
@@ -100,6 +114,13 @@ class App {
   }
 
   async _playSong(songId) {
+    // Clean up any active preview
+    this.player.stop();
+    this.audio.stopAll();
+    this._audioHandles.clear();
+    this.previewMode = false;
+    this._setControlsMode('game');
+
     this.currentSongId = songId;
     this.songListScreen.style.display = 'none';
     this.playScreen.style.display = 'flex';
@@ -158,6 +179,94 @@ class App {
     }
   }
 
+  async _previewSong(songId) {
+    // Stop any active game/player
+    this.game.stop();
+    this.player.stop();
+    this.audio.stopAll();
+    this._audioHandles.clear();
+
+    this.currentSongId = songId;
+    this.previewMode = true;
+    this.songListScreen.style.display = 'none';
+    this.playScreen.style.display = 'flex';
+    this.completionScreen.hide();
+
+    // Fetch full song
+    const res = await fetch(`/api/songs/${songId}`);
+    const song = await res.json();
+
+    // Update title bar
+    document.getElementById('song-title').textContent = `${song.title} - ${song.composer}`;
+
+    // Destroy old keyboard to remove stale resize listeners
+    this.keyboard.destroy();
+
+    // Adjust keyboard range to song
+    const noteNums = song.tracks.flatMap(t => t.notes.map(n => n.note));
+    const minNote = noteNums.length > 0 ? Math.min(...noteNums) : 48;
+    const maxNote = noteNums.length > 0 ? Math.max(...noteNums) : 84;
+    const low = Math.max(21, Math.floor((minNote - 5) / 12) * 12);
+    const high = Math.min(108, Math.ceil((maxNote + 5) / 12) * 12);
+    this.keyboard = new PianoKeyboard(document.getElementById('keyboard-canvas'), low, high);
+    this.waterfall.keyboard = this.keyboard;
+
+    await new Promise(r => requestAnimationFrame(r));
+    this.keyboard.resize();
+    this.waterfall.resize();
+
+    // Apply global config tempo
+    const tempoSlider = document.getElementById('tempo-slider');
+    tempoSlider.value = this.config.tempoPercent;
+    document.getElementById('tempo-value').textContent = this.config.tempoPercent + '%';
+
+    // Adapt controls for preview mode
+    this._setControlsMode('preview');
+
+    // Load player
+    const tempo = song.tempo * this.config.tempoPercent / 100;
+    this.player.load(song, tempo);
+
+    // Wire player callbacks
+    this.player.onNoteOn = (note, hand) => {
+      const color = hand === 'left' ? COLORS.leftHand : COLORS.rightHand;
+      this.keyboard.pressKey(note, color);
+      const handle = this.audio.noteOn(note);
+      this._audioHandles.set(note, handle);
+    };
+    this.player.onNoteOff = (note) => {
+      this.keyboard.releaseKey(note);
+      const handle = this._audioHandles.get(note);
+      if (handle !== undefined) {
+        this.audio.noteOff(handle);
+        this._audioHandles.delete(note);
+      }
+    };
+    this.player.onComplete = () => {
+      this._showSongList();
+    };
+
+    this.player.start();
+  }
+
+  _setControlsMode(mode) {
+    const modeToggle = document.getElementById('btn-mode');
+    const scoreDisplay = document.getElementById('score-display');
+    const restartBtn = document.getElementById('btn-restart');
+
+    if (mode === 'preview') {
+      modeToggle.style.display = 'none';
+      scoreDisplay.style.display = 'none';
+      restartBtn.textContent = 'Restart';
+      restartBtn.onclick = () => this._previewSong(this.currentSongId);
+    } else {
+      modeToggle.style.display = '';
+      scoreDisplay.style.display = '';
+      restartBtn.textContent = 'Restart';
+      restartBtn.onclick = () => this._playSong(this.currentSongId);
+    }
+  }
+
   _showCountdown() {
     const overlay = document.getElementById('countdown-overlay');
     const text = document.getElementById('countdown-text');
@@ -197,6 +306,9 @@ class App {
   }
 
   _onNoteOn(e) {
+    // Ignore MIDI input during preview playback
+    if (this.previewMode) return;
+
     if (!this.game.playing) {
       // Free play - just show on keyboard
       this.keyboard.pressKey(e.note, COLORS.rightHand);
@@ -217,6 +329,7 @@ class App {
   }
 
   _onNoteOff(e) {
+    if (this.previewMode) return;
     this.game.noteOff(e.note);
     this.keyboard.releaseKey(e.note);
   }
@@ -236,31 +349,38 @@ class App {
   }
 
   _renderLoop(now) {
-    // Update game state
-    this.game.update(now);
-
-    // Update keyboard hints for pending notes
-    if (this.game.playing && this.game.pendingSlice.length > 0) {
-      const hintNotes = this.game.pendingSlice
-        .filter(n => !this.game.hitNotes.has(n))
-        .map(n => n.note);
-      const hand = this.game.pendingSlice[0]?.hand || 'right';
-      this.keyboard.setHints(hintNotes, hand);
-    } else {
+    if (this.previewMode) {
+      // Preview mode: player drives the waterfall, no hints
       this.keyboard.clearHints();
+      this.waterfall.draw(
+        this.player.currentBeat,
+        this.player.allNotes,
+        new Set(),  // no hit tracking in preview
+        new Set(),  // no active slice
+      );
+    } else {
+      // Game mode
+      this.game.update(now);
+
+      if (this.game.playing && this.game.pendingSlice.length > 0) {
+        const hintNotes = this.game.pendingSlice
+          .filter(n => !this.game.hitNotes.has(n))
+          .map(n => n.note);
+        const hand = this.game.pendingSlice[0]?.hand || 'right';
+        this.keyboard.setHints(hintNotes, hand);
+      } else {
+        this.keyboard.clearHints();
+      }
+
+      this.waterfall.draw(
+        this.game.currentBeat,
+        this.game.allNotes,
+        this.game.hitNotes,
+        this.game.getActiveSliceNotes(),
+      );
     }
 
-    // Draw waterfall
-    this.waterfall.draw(
-      this.game.currentBeat,
-      this.game.allNotes,
-      this.game.hitNotes,
-      this.game.getActiveSliceNotes(),
-    );
-
-    // Draw keyboard
     this.keyboard.draw(now);
-
     requestAnimationFrame(this._renderLoop);
   }
 }

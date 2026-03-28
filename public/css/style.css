@@ -177,6 +177,29 @@ html, body {
   text-align: right;
 }
 
+/* ========== Preview (Play) Button ========== */
+.btn-preview {
+  background: none;
+  border: 1px solid #2a3a5c;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1rem;
+  color: #888;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.btn-preview:hover {
+  color: #FFD700;
+  border-color: #FFD700;
+  background: rgba(255, 215, 0, 0.08);
+}
+
 /* ========== Settings Panel ========== */
 .header-row {
   display: flex;

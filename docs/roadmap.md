@@ -4,7 +4,10 @@ Ideas and planned features, roughly ordered by scope.
 
 ## Play Mode
 
-Add a "play" button/mode for full song playback (real-time, no waiting for correct input).
+- [x] Play ▶ button on each song card for non-interactive preview
+- [x] Waterfall scrolls, keyboard lights up, audio plays via Web Audio API
+- [x] Simplified controls bar (no scoring, no mode toggle)
+- [x] Auto-returns to song list after playback finishes
 
 ## Improve Modes
 
