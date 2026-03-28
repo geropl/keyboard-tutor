@@ -1,5 +1,8 @@
 # Go binary
 /piano-tutor
+
+# Runtime data
+data/progress.json
 *.exe
 *.dll
 *.so
