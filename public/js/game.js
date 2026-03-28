@@ -87,13 +87,31 @@ export class GameEngine {
     const matchIdx = this.pendingSlice.findIndex(n => n.note === midiNote && !this.hitNotes.has(n));
     if (matchIdx >= 0) {
       const matched = this.pendingSlice[matchIdx];
-      this.hitNotes.add(matched);
-      this.hits++;
-      this.pendingSlice.splice(matchIdx, 1);
 
-      // If slice is complete, advance
-      if (this.pendingSlice.length === 0) {
+      // For single-note slices, register hit immediately
+      if (this.pendingSlice.length === 1) {
+        this.hitNotes.add(matched);
+        this.hits++;
+        this.pendingSlice.splice(matchIdx, 1);
         this._advancePastSlice(matched.start);
+        return { hit: true, note: midiNote, hand: matched.hand };
+      }
+
+      // For chords: track matched notes, only confirm when all are held
+      if (!this._sliceMatches) this._sliceMatches = new Set();
+      this._sliceMatches.add(matchIdx);
+
+      // Check if all slice notes are currently held down
+      const allHeld = this.pendingSlice.every(n => this.physicalKeys.has(n.note));
+      if (allHeld) {
+        const sliceStart = this.pendingSlice[0].start;
+        for (const n of this.pendingSlice) {
+          this.hitNotes.add(n);
+          this.hits++;
+        }
+        this.pendingSlice = [];
+        this._sliceMatches = null;
+        this._advancePastSlice(sliceStart);
       }
       return { hit: true, note: midiNote, hand: matched.hand };
     }
@@ -104,6 +122,10 @@ export class GameEngine {
 
   noteOff(midiNote) {
     this.physicalKeys.delete(midiNote);
+    // Clear partial chord matches when a key is released
+    if (this._sliceMatches) {
+      this._sliceMatches = null;
+    }
   }
 
   _advancePastSlice(sliceStart) {

@@ -11,9 +11,9 @@
       "completedAt": "2026-03-28T10:32:03.199Z"
     },
     "fur-elise": {
-      "bestScore": 45,
-      "stars": 0,
-      "completedAt": "2026-03-28T10:35:22.288Z"
+      "bestScore": 100,
+      "stars": 3,
+      "completedAt": "2026-03-28T12:22:16.439Z"
     },
     "twinkle-twinkle": {
       "bestScore": 100,
@@ -24,6 +24,21 @@
       "bestScore": 100,
       "stars": 3,
       "completedAt": "2026-03-28T11:38:43.169Z"
+    },
+    "lightly-row": {
+      "bestScore": 100,
+      "stars": 3,
+      "completedAt": "2026-03-28T12:07:02.734Z"
+    },
+    "when-the-saints": {
+      "bestScore": 100,
+      "stars": 3,
+      "completedAt": "2026-03-28T12:09:44.521Z"
+    },
+    "minuet-in-g": {
+      "bestScore": 100,
+      "stars": 3,
+      "completedAt": "2026-03-28T12:12:41.432Z"
     }
   }
 }
