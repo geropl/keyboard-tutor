@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Piano Tutor</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Song List Screen -->
+  <div id="song-list-screen" class="screen"></div>
+
+  <!-- Playing Screen -->
+  <div id="play-screen" class="screen" style="display:none">
+    <!-- Top bar -->
+    <div id="top-bar">
+      <button id="btn-back-to-list" class="btn btn-icon" title="Back to song list">&larr;</button>
+      <span id="song-title">-</span>
+      <div id="top-bar-right">
+        <span id="score-display">0%</span>
+        <span id="connection-status" class="status disconnected">Connecting...</span>
+      </div>
+    </div>
+
+    <!-- Controls bar -->
+    <div id="controls-bar">
+      <button id="btn-restart" class="btn btn-small">Restart</button>
+      <button id="btn-wait-mode" class="btn btn-small active">Wait Mode: ON</button>
+      <div class="tempo-control">
+        <label for="tempo-slider">Tempo:</label>
+        <input type="range" id="tempo-slider" min="25" max="150" value="100" step="5">
+        <span id="tempo-value">100%</span>
+      </div>
+    </div>
+
+    <!-- Waterfall -->
+    <div id="waterfall-container">
+      <canvas id="waterfall-canvas"></canvas>
+    </div>
+
+    <!-- Keyboard -->
+    <div id="keyboard-container">
+      <canvas id="keyboard-canvas"></canvas>
+    </div>
+  </div>
+
+  <!-- Completion overlay -->
+  <div id="completion-overlay" style="display:none"></div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

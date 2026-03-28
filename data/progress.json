@@ -1,0 +1,19 @@
+{
+  "songs": {
+    "ode-to-joy": {
+      "bestScore": 100,
+      "stars": 3,
+      "completedAt": "2026-03-28T10:29:30.804Z"
+    },
+    "mary-had-a-little-lamb": {
+      "bestScore": 100,
+      "stars": 3,
+      "completedAt": "2026-03-28T10:32:03.199Z"
+    },
+    "fur-elise": {
+      "bestScore": 45,
+      "stars": 0,
+      "completedAt": "2026-03-28T10:35:22.288Z"
+    }
+  }
+}

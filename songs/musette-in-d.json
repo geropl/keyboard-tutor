@@ -1,0 +1,74 @@
+{
+  "id": "musette-in-d",
+  "title": "Musette in D Major",
+  "composer": "Johann Sebastian Bach",
+  "difficulty": 3,
+  "tempo": 120,
+  "timeSignature": [2, 4],
+  "description": "From the Notebook for Anna Magdalena Bach. A cheerful dance featuring a characteristic bagpipe-like drone bass.",
+  "skillFocus": "D major scale, drone bass, quick eighth note passages",
+  "tracks": [
+    {
+      "hand": "right",
+      "notes": [
+        { "note": 74, "start": 0, "duration": 0.5 },
+        { "note": 76, "start": 0.5, "duration": 0.5 },
+        { "note": 78, "start": 1, "duration": 0.5 },
+        { "note": 79, "start": 1.5, "duration": 0.5 },
+
+        { "note": 81, "start": 2, "duration": 0.5 },
+        { "note": 78, "start": 2.5, "duration": 0.5 },
+        { "note": 81, "start": 3, "duration": 0.5 },
+        { "note": 79, "start": 3.5, "duration": 0.5 },
+
+        { "note": 78, "start": 4, "duration": 0.5 },
+        { "note": 76, "start": 4.5, "duration": 0.5 },
+        { "note": 74, "start": 5, "duration": 0.5 },
+        { "note": 76, "start": 5.5, "duration": 0.5 },
+
+        { "note": 78, "start": 6, "duration": 0.5 },
+        { "note": 74, "start": 6.5, "duration": 0.5 },
+        { "note": 71, "start": 7, "duration": 0.5 },
+        { "note": 74, "start": 7.5, "duration": 0.5 },
+
+        { "note": 74, "start": 8, "duration": 0.5 },
+        { "note": 76, "start": 8.5, "duration": 0.5 },
+        { "note": 78, "start": 9, "duration": 0.5 },
+        { "note": 79, "start": 9.5, "duration": 0.5 },
+
+        { "note": 81, "start": 10, "duration": 0.5 },
+        { "note": 78, "start": 10.5, "duration": 0.5 },
+        { "note": 81, "start": 11, "duration": 0.5 },
+        { "note": 83, "start": 11.5, "duration": 0.5 },
+
+        { "note": 81, "start": 12, "duration": 0.5 },
+        { "note": 79, "start": 12.5, "duration": 0.5 },
+        { "note": 78, "start": 13, "duration": 0.5 },
+        { "note": 76, "start": 13.5, "duration": 0.5 },
+
+        { "note": 74, "start": 14, "duration": 1 },
+        { "note": 74, "start": 15, "duration": 1 }
+      ]
+    },
+    {
+      "hand": "left",
+      "notes": [
+        { "note": 50, "start": 0, "duration": 2 },
+        { "note": 50, "start": 2, "duration": 1 },
+        { "note": 57, "start": 3, "duration": 1 },
+
+        { "note": 50, "start": 4, "duration": 2 },
+        { "note": 50, "start": 6, "duration": 1 },
+        { "note": 57, "start": 7, "duration": 1 },
+
+        { "note": 50, "start": 8, "duration": 2 },
+        { "note": 50, "start": 10, "duration": 1 },
+        { "note": 57, "start": 11, "duration": 1 },
+
+        { "note": 50, "start": 12, "duration": 2 },
+        { "note": 50, "start": 14, "duration": 1 },
+        { "note": 57, "start": 15, "duration": 1 }
+      ]
+    }
+  ]
+}

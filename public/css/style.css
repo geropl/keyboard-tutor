@@ -1,0 +1,405 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+}
+
+/* Screens */
+.screen {
+  width: 100%;
+  height: 100%;
+}
+
+/* ========== Song List Screen ========== */
+#song-list-screen {
+  overflow-y: auto;
+  padding: 20px 40px 40px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.song-list-header {
+  text-align: center;
+  padding: 30px 0 10px;
+}
+
+.song-list-header h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #FFD700;
+  margin-bottom: 6px;
+}
+
+.subtitle {
+  color: #888;
+  font-size: 1rem;
+}
+
+.difficulty-section {
+  margin-top: 28px;
+}
+
+.difficulty-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.difficulty-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ccc;
+}
+
+.progress-count {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.progress-bar-container {
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: #FFD700;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.song-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.song-card {
+  position: relative;
+  background: #16213e;
+  border: 1px solid #2a3a5c;
+  border-radius: 10px;
+  padding: 14px 18px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.song-card:hover {
+  background: #1a2a4a;
+  border-color: #4A90D9;
+}
+
+.song-card.recommended {
+  border-color: #FFD700;
+}
+
+.badge {
+  position: absolute;
+  top: -8px;
+  right: 14px;
+  background: #FFD700;
+  color: #1a1a2e;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.song-card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.song-title {
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.song-composer {
+  color: #888;
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+.song-meta {
+  text-align: center;
+  min-width: 70px;
+}
+
+.stars {
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+}
+
+.star {
+  color: #444;
+}
+
+.star.filled {
+  color: #FFD700;
+}
+
+.best-score {
+  color: #888;
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+.song-skill {
+  color: #666;
+  font-size: 0.75rem;
+  max-width: 180px;
+  text-align: right;
+}
+
+/* ========== Play Screen ========== */
+#play-screen {
+  display: flex;
+  flex-direction: column;
+}
+
+#top-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #0f0f23;
+  border-bottom: 1px solid #2a2a4a;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+#song-title {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+#score-display {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #FFD700;
+  min-width: 50px;
+  text-align: right;
+}
+
+.status {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+.status.connected {
+  background: #1b5e20;
+  color: #81c784;
+}
+
+.status.disconnected {
+  background: #4a1010;
+  color: #e57373;
+}
+
+#controls-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  background: #111133;
+  border-bottom: 1px solid #2a2a4a;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.tempo-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: #888;
+  font-size: 0.8rem;
+}
+
+.tempo-control input[type="range"] {
+  width: 100px;
+  accent-color: #4A90D9;
+}
+
+#waterfall-container {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+#keyboard-container {
+  height: 140px;
+  flex-shrink: 0;
+  position: relative;
+  border-top: 3px solid #FFD700;
+}
+
+#waterfall-canvas, #keyboard-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Buttons */
+.btn {
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  font-family: inherit;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.btn-icon {
+  background: transparent;
+  color: #ccc;
+  font-size: 1.3rem;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+.btn-icon:hover {
+  color: #fff;
+}
+
+.btn-small {
+  background: #2a3a5c;
+  color: #ccc;
+  font-size: 0.8rem;
+  padding: 4px 12px;
+}
+
+.btn-small:hover {
+  background: #3a4a6c;
+}
+
+.btn-small.active {
+  background: #4A90D9;
+  color: #fff;
+}
+
+.btn-primary {
+  background: #4A90D9;
+  color: #fff;
+  font-size: 1rem;
+  padding: 10px 24px;
+}
+
+.btn-primary:hover {
+  background: #5aa0e9;
+}
+
+.btn-secondary {
+  background: #2a3a5c;
+  color: #ccc;
+  font-size: 1rem;
+  padding: 10px 24px;
+}
+
+.btn-secondary:hover {
+  background: #3a4a6c;
+}
+
+/* ========== Completion Overlay ========== */
+#completion-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.completion-panel {
+  background: #16213e;
+  border: 1px solid #2a3a5c;
+  border-radius: 16px;
+  padding: 36px 48px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+}
+
+.completion-panel h2 {
+  font-size: 1.5rem;
+  color: #FFD700;
+  margin-bottom: 8px;
+}
+
+.completion-title {
+  color: #ccc;
+  font-size: 1rem;
+  margin-bottom: 20px;
+}
+
+.completion-stars {
+  font-size: 3rem;
+  letter-spacing: 8px;
+  margin-bottom: 10px;
+}
+
+.completion-star {
+  color: #444;
+}
+
+.completion-star.filled {
+  color: #FFD700;
+}
+
+.completion-score {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.completion-details {
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.completion-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}

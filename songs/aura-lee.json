@@ -1,0 +1,59 @@
+{
+  "id": "aura-lee",
+  "title": "Aura Lee",
+  "composer": "George R. Poulton",
+  "difficulty": 2,
+  "tempo": 96,
+  "timeSignature": [4, 4],
+  "description": "A Civil War era love song, later adapted as 'Love Me Tender' by Elvis Presley. Introduces left hand accompaniment.",
+  "skillFocus": "Two-hand coordination, sustained bass notes",
+  "tracks": [
+    {
+      "hand": "right",
+      "notes": [
+        { "note": 60, "start": 0, "duration": 1 },
+        { "note": 62, "start": 1, "duration": 1 },
+        { "note": 64, "start": 2, "duration": 1 },
+        { "note": 65, "start": 3, "duration": 1 },
+
+        { "note": 67, "start": 4, "duration": 2 },
+        { "note": 67, "start": 6, "duration": 2 },
+
+        { "note": 69, "start": 8, "duration": 1 },
+        { "note": 67, "start": 9, "duration": 1 },
+        { "note": 65, "start": 10, "duration": 1 },
+        { "note": 64, "start": 11, "duration": 1 },
+
+        { "note": 62, "start": 12, "duration": 4 },
+
+        { "note": 60, "start": 16, "duration": 1 },
+        { "note": 62, "start": 17, "duration": 1 },
+        { "note": 64, "start": 18, "duration": 1 },
+        { "note": 65, "start": 19, "duration": 1 },
+
+        { "note": 67, "start": 20, "duration": 2 },
+        { "note": 67, "start": 22, "duration": 2 },
+
+        { "note": 69, "start": 24, "duration": 1 },
+        { "note": 67, "start": 25, "duration": 1 },
+        { "note": 65, "start": 26, "duration": 1 },
+        { "note": 67, "start": 27, "duration": 1 },
+
+        { "note": 60, "start": 28, "duration": 4 }
+      ]
+    },
+    {
+      "hand": "left",
+      "notes": [
+        { "note": 48, "start": 0, "duration": 4 },
+        { "note": 43, "start": 4, "duration": 4 },
+        { "note": 41, "start": 8, "duration": 4 },
+        { "note": 48, "start": 12, "duration": 4 },
+        { "note": 48, "start": 16, "duration": 4 },
+        { "note": 43, "start": 20, "duration": 4 },
+        { "note": 41, "start": 24, "duration": 4 },
+        { "note": 48, "start": 28, "duration": 4 }
+      ]
+    }
+  ]
+}

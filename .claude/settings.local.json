@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dpkg -l)",
+      "Bash(pip list:*)",
+      "Bash(npm list:*)",
+      "Read(//proc/asound/**)",
+      "Read(//dev/**)",
+      "Bash(aplaymidi -l)",
+      "Bash(amidi -l)",
+      "Bash(ls:*)",
+      "Bash(pip3 --version)",
+      "Bash(npm:*)",
+      "Bash(node -e \"console.log\\(process.version\\)\")",
+      "Read(//usr/lib/**)",
+      "Bash(apt list:*)",
+      "Bash(corepack --version)",
+      "Bash(apt-get install:*)",
+      "Bash(node:*)"
+    ]
+  }
+}
