@@ -8,10 +8,10 @@ Add a "play" button/mode for full song playback (real-time, no waiting for corre
 
 ## Improve Modes
 
-- [ ] Countdown or wait-for-first-keypress before playback starts (free-play mode)
-- [ ] Restart should preserve speed config
-- [ ] Define naming: "wait mode" vs "free play"? Current "wait on/off" is unclear.
-- [ ] Should mode + config (speed, etc.) be stored globally rather than per-song?
+- [x] Countdown or wait-for-first-keypress before playback starts (performance mode)
+- [x] Restart should preserve speed config
+- [x] Define naming: renamed to "Practice" / "Performance"
+- [x] Mode + config (speed, start behavior) stored globally per session
 
 ## Progression Tracking
 

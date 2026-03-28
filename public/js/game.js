@@ -1,4 +1,5 @@
 import { starsForScore } from './utils.js';
+import { MODE_PRACTICE, MODE_PERFORMANCE } from './config.js';
 
 export class GameEngine {
   constructor() {
@@ -9,12 +10,13 @@ export class GameEngine {
     this.totalNotes = 0;
     this.hits = 0;
     this.misses = 0;
-    this.waitMode = true;
+    this.mode = MODE_PRACTICE;
     this.playing = false;
     this.completed = false;
     this.tempo = 120;
     this.lastFrameTime = null;
     this.pendingSlice = [];   // notes in current time slice waiting to be played
+    this.waitingForFirstKey = false; // performance mode: freeze until first keypress
     this.onComplete = null;
 
     // Track which physical keys are currently down
@@ -39,6 +41,7 @@ export class GameEngine {
     this.playing = false;
     this.completed = false;
     this.lastFrameTime = null;
+    this.waitingForFirstKey = false;
     this._computePendingSlice();
   }
 
@@ -82,6 +85,12 @@ export class GameEngine {
   noteOn(midiNote) {
     this.physicalKeys.add(midiNote);
     if (!this.playing || this.completed) return { hit: false, note: midiNote };
+
+    // Performance mode: first keypress starts time
+    if (this.waitingForFirstKey) {
+      this.waitingForFirstKey = false;
+      this.lastFrameTime = performance.now();
+    }
 
     // Check if this note matches any pending slice note
     const matchIdx = this.pendingSlice.findIndex(n => n.note === midiNote && !this.hitNotes.has(n));
@@ -149,11 +158,12 @@ export class GameEngine {
     }
   }
 
-  // Called each frame in performance mode (non-wait)
+  // Called each frame
   update(now) {
     if (!this.playing || this.completed) return;
+    if (this.waitingForFirstKey) return; // freeze until first keypress
 
-    if (!this.waitMode) {
+    if (this.mode === MODE_PERFORMANCE) {
       if (this.lastFrameTime === null) {
         this.lastFrameTime = now;
         return;
@@ -180,7 +190,7 @@ export class GameEngine {
         this._completeSong();
       }
     } else {
-      // In wait mode, advance smoothly toward the next slice's beat
+      // In practice mode, advance smoothly toward the next slice's beat
       if (this.pendingSlice.length > 0) {
         const targetBeat = this.pendingSlice[0].start;
         if (this.currentBeat < targetBeat) {

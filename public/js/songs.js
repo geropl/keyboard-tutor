@@ -1,8 +1,10 @@
 import { COLORS, DIFFICULTY_LABELS } from './utils.js';
+import { MODE_PRACTICE, MODE_PERFORMANCE, START_COUNTDOWN, START_FIRST_KEYPRESS } from './config.js';
 
 export class SongListUI {
-  constructor(container) {
+  constructor(container, config) {
     this.container = container;
+    this.config = config;
     this.songs = [];
     this.progress = {};
     this.onSelectSong = null;
@@ -29,10 +31,22 @@ export class SongListUI {
     const header = document.createElement('div');
     header.className = 'song-list-header';
     header.innerHTML = `
-      <h1>Piano Tutor</h1>
+      <div class="header-row">
+        <h1>Piano Tutor</h1>
+        <button class="btn btn-icon btn-settings" id="btn-settings" title="Settings">&#9881;</button>
+      </div>
       <p class="subtitle">Select a song to start learning</p>
     `;
     inner.appendChild(header);
+
+    // Settings panel
+    const panel = this._buildSettingsPanel();
+    inner.appendChild(panel);
+
+    header.querySelector('#btn-settings').onclick = () => {
+      const visible = panel.style.display !== 'none';
+      panel.style.display = visible ? 'none' : 'block';
+    };
 
     // Recommended next
     const recommended = this._getRecommended();
@@ -90,6 +104,67 @@ export class SongListUI {
       section.appendChild(list);
       inner.appendChild(section);
     }
+  }
+
+  _buildSettingsPanel() {
+    const panel = document.createElement('div');
+    panel.className = 'settings-panel';
+    panel.style.display = 'none';
+
+    const isPractice = this.config.mode === MODE_PRACTICE;
+    const isCountdown = this.config.performanceStart === START_COUNTDOWN;
+
+    panel.innerHTML = `
+      <div class="settings-group">
+        <label class="settings-label">Mode</label>
+        <div class="segmented-control" id="mode-control">
+          <button class="seg-btn ${isPractice ? 'active' : ''}" data-value="${MODE_PRACTICE}">Practice</button>
+          <button class="seg-btn ${!isPractice ? 'active' : ''}" data-value="${MODE_PERFORMANCE}">Performance</button>
+        </div>
+      </div>
+      <div class="settings-group">
+        <label class="settings-label">Tempo</label>
+        <div class="settings-tempo">
+          <input type="range" id="settings-tempo-slider" min="25" max="150" value="${this.config.tempoPercent}" step="5">
+          <span id="settings-tempo-value">${this.config.tempoPercent}%</span>
+        </div>
+      </div>
+      <div class="settings-group" id="start-behavior-group" style="display: ${isPractice ? 'none' : ''}">
+        <label class="settings-label">Start Behavior</label>
+        <div class="segmented-control" id="start-control">
+          <button class="seg-btn ${isCountdown ? 'active' : ''}" data-value="${START_COUNTDOWN}">Countdown</button>
+          <button class="seg-btn ${!isCountdown ? 'active' : ''}" data-value="${START_FIRST_KEYPRESS}">First Keypress</button>
+        </div>
+      </div>
+    `;
+
+    // Mode toggle
+    panel.querySelector('#mode-control').addEventListener('click', (e) => {
+      const btn = e.target.closest('.seg-btn');
+      if (!btn) return;
+      this.config.mode = btn.dataset.value;
+      panel.querySelectorAll('#mode-control .seg-btn').forEach(b => b.classList.toggle('active', b === btn));
+      panel.querySelector('#start-behavior-group').style.display =
+        this.config.mode === MODE_PRACTICE ? 'none' : '';
+    });
+
+    // Tempo slider
+    const tempoSlider = panel.querySelector('#settings-tempo-slider');
+    const tempoValue = panel.querySelector('#settings-tempo-value');
+    tempoSlider.oninput = () => {
+      this.config.tempoPercent = parseInt(tempoSlider.value);
+      tempoValue.textContent = this.config.tempoPercent + '%';
+    };
+
+    // Start behavior toggle
+    panel.querySelector('#start-control').addEventListener('click', (e) => {
+      const btn = e.target.closest('.seg-btn');
+      if (!btn) return;
+      this.config.performanceStart = btn.dataset.value;
+      panel.querySelectorAll('#start-control .seg-btn').forEach(b => b.classList.toggle('active', b === btn));
+    });
+
+    return panel;
   }
 
   _getRecommended() {

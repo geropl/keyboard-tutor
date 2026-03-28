@@ -25,7 +25,7 @@
     <!-- Controls bar -->
     <div id="controls-bar">
       <button id="btn-restart" class="btn btn-small">Restart</button>
-      <button id="btn-wait-mode" class="btn btn-small active">Wait Mode: ON</button>
+      <button id="btn-mode" class="btn btn-small active">Practice</button>
       <div class="tempo-control">
         <label for="tempo-slider">Tempo:</label>
         <input type="range" id="tempo-slider" min="25" max="150" value="100" step="5">
@@ -42,6 +42,11 @@
     <div id="keyboard-container">
       <canvas id="keyboard-canvas"></canvas>
     </div>
+  </div>
+
+  <!-- Countdown overlay -->
+  <div id="countdown-overlay" style="display:none">
+    <span id="countdown-text"></span>
   </div>
 
   <!-- Completion overlay -->

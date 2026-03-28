@@ -5,9 +5,11 @@ import { GameEngine } from './game.js';
 import { SongListUI } from './songs.js';
 import { CompletionScreen } from './progress.js';
 import { COLORS, starsForScore } from './utils.js';
+import { Config, MODE_PRACTICE, MODE_PERFORMANCE, START_COUNTDOWN, START_FIRST_KEYPRESS } from './config.js';
 
 class App {
   constructor() {
+    this.config = new Config();
     this.connection = new Connection();
     this.game = new GameEngine();
     this.currentSongId = null;
@@ -24,7 +26,7 @@ class App {
     this.waterfall = new Waterfall(document.getElementById('waterfall-canvas'), this.keyboard);
 
     // Song list
-    this.songListUI = new SongListUI(this.songListScreen);
+    this.songListUI = new SongListUI(this.songListScreen, this.config);
     this.songListUI.onSelectSong = (id) => this._playSong(id);
 
     // Completion screen
@@ -37,11 +39,13 @@ class App {
     document.getElementById('btn-back-to-list').onclick = () => this._showSongList();
     document.getElementById('btn-restart').onclick = () => this._playSong(this.currentSongId);
 
-    const waitToggle = document.getElementById('btn-wait-mode');
-    waitToggle.onclick = () => {
-      this.game.waitMode = !this.game.waitMode;
-      waitToggle.textContent = this.game.waitMode ? 'Wait Mode: ON' : 'Wait Mode: OFF';
-      waitToggle.classList.toggle('active', this.game.waitMode);
+    const modeToggle = document.getElementById('btn-mode');
+    modeToggle.onclick = () => {
+      const next = this.game.mode === MODE_PRACTICE ? MODE_PERFORMANCE : MODE_PRACTICE;
+      this.game.mode = next;
+      this.config.mode = next;
+      modeToggle.textContent = next === MODE_PRACTICE ? 'Practice' : 'Performance';
+      modeToggle.classList.toggle('active', next === MODE_PRACTICE);
     };
 
     const tempoSlider = document.getElementById('tempo-slider');
@@ -49,6 +53,7 @@ class App {
     tempoSlider.oninput = () => {
       const pct = parseInt(tempoSlider.value);
       tempoLabel.textContent = pct + '%';
+      this.config.tempoPercent = pct;
       if (this.game.song) {
         this.game.setTempo(this.game.song.tempo * pct / 100);
       }
@@ -127,14 +132,58 @@ class App {
     this.keyboard.resize();
     this.waterfall.resize();
 
-    // Reset tempo slider
+    // Apply global config tempo (preserved across restart/retry)
     const tempoSlider = document.getElementById('tempo-slider');
-    tempoSlider.value = 100;
-    document.getElementById('tempo-value').textContent = '100%';
+    tempoSlider.value = this.config.tempoPercent;
+    document.getElementById('tempo-value').textContent = this.config.tempoPercent + '%';
+
+    // Apply global config mode
+    this.game.mode = this.config.mode;
+    const modeToggle = document.getElementById('btn-mode');
+    modeToggle.textContent = this.config.mode === MODE_PRACTICE ? 'Practice' : 'Performance';
+    modeToggle.classList.toggle('active', this.config.mode === MODE_PRACTICE);
 
     // Load and start
     this.game.loadSong(song);
-    this.game.start();
+    this.game.setTempo(song.tempo * this.config.tempoPercent / 100);
+
+    if (this.config.mode === MODE_PERFORMANCE && this.config.performanceStart === START_COUNTDOWN) {
+      await this._showCountdown();
+      this.game.start();
+    } else if (this.config.mode === MODE_PERFORMANCE && this.config.performanceStart === START_FIRST_KEYPRESS) {
+      this.game.waitingForFirstKey = true;
+      this.game.start();
+    } else {
+      this.game.start();
+    }
+  }
+
+  _showCountdown() {
+    const overlay = document.getElementById('countdown-overlay');
+    const text = document.getElementById('countdown-text');
+    overlay.style.display = 'flex';
+
+    const steps = ['3', '2', '1', 'Go!'];
+    let i = 0;
+
+    return new Promise(resolve => {
+      const tick = () => {
+        if (i < steps.length) {
+          text.textContent = steps[i];
+          // Re-trigger animation by removing and re-adding the element
+          text.style.animation = 'none';
+          text.offsetHeight; // force reflow
+          text.style.animation = '';
+          i++;
+          setTimeout(tick, i === steps.length ? 500 : 1000);
+        } else {
+          overlay.style.display = 'none';
+          text.textContent = '';
+          resolve();
+        }
+      };
+      tick();
+    });
   }
 
   _playNext() {

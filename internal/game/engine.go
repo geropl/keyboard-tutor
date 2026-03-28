@@ -2,6 +2,12 @@ package game
 
 import "math"
 
+// Mode constants
+const (
+	ModePractice    = "practice"
+	ModePerformance = "performance"
+)
+
 // Note is a single note in a song, with hand assignment.
 type Note struct {
 	NoteNum  int     `json:"note"`
@@ -65,7 +71,7 @@ type Engine struct {
 	TotalNotes   int
 	Hits         int
 	Misses       int
-	WaitMode     bool
+	Mode         string
 	Playing      bool
 	Completed    bool
 	Tempo        float64
@@ -82,7 +88,7 @@ type Engine struct {
 // NewEngine creates a new game engine with default settings.
 func NewEngine() *Engine {
 	return &Engine{
-		WaitMode:     true,
+		Mode:         ModePractice,
 		HitNotes:     make(map[*Note]bool),
 		physicalKeys: make(map[int]bool),
 	}
@@ -296,7 +302,7 @@ func (e *Engine) Update(now float64) {
 		return
 	}
 
-	if !e.WaitMode {
+	if e.Mode == ModePerformance {
 		// Performance mode
 		if e.LastFrame == nil {
 			e.LastFrame = &now
@@ -336,7 +342,7 @@ func (e *Engine) Update(now float64) {
 			e.completeSong()
 		}
 	} else {
-		// Wait mode: advance smoothly toward next slice
+		// Practice mode: advance smoothly toward next slice
 		if len(e.PendingSlice) > 0 {
 			targetBeat := e.PendingSlice[0].Start
 			if e.CurrentBeat < targetBeat {
