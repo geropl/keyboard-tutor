@@ -65,6 +65,7 @@ func TestWebSocketSaveProgress(t *testing.T) {
 		"songId": "mary",
 		"score":  95,
 		"stars":  3,
+		"mode":   "practice",
 	}
 	data, _ := json.Marshal(msg)
 	conn.WriteMessage(websocket.TextMessage, data)
@@ -73,8 +74,8 @@ func TestWebSocketSaveProgress(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	all := prog.GetAll()
-	if all.Songs["mary"].BestScore != 95 {
-		t.Errorf("expected bestScore 95, got %d", all.Songs["mary"].BestScore)
+	if all.Songs["mary"].Practice == nil || all.Songs["mary"].Practice.BestScore != 95 {
+		t.Errorf("expected practice bestScore 95, got %+v", all.Songs["mary"])
 	}
 }
 

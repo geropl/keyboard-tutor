@@ -164,6 +164,21 @@ html, body {
   color: #FFD700;
 }
 
+.mode-stars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.mode-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #666;
+  min-width: 12px;
+}
+
 .best-score {
   color: #888;
   font-size: 0.8rem;

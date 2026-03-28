@@ -18,7 +18,10 @@ Ideas and planned features, roughly ordered by scope.
 
 ## Progression Tracking
 
-Track a second success level per mode — e.g. separate completion state for wait-mode vs free-play.
+- [x] Separate best score and stars per mode (Practice / Performance)
+- [x] Backward-compatible migration from old flat format
+- [x] Song cards show per-mode star rows (P / F)
+- [x] Recommendation logic considers both modes
 
 ## Review Metrics
 

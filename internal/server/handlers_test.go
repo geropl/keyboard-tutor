@@ -114,7 +114,7 @@ func TestSongGetNotFound(t *testing.T) {
 
 func TestProgressGetHandler(t *testing.T) {
 	prog := testProgress(t)
-	prog.Save("mary", 85, 2)
+	prog.Save("mary", 85, 2, "practice")
 
 	h := &Handlers{Songs: testSongService(t), Progress: prog}
 
@@ -130,8 +130,8 @@ func TestProgressGetHandler(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &pd); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if pd.Songs["mary"].BestScore != 85 {
-		t.Errorf("expected 85, got %d", pd.Songs["mary"].BestScore)
+	if pd.Songs["mary"].Practice == nil || pd.Songs["mary"].Practice.BestScore != 85 {
+		t.Errorf("expected practice bestScore 85, got %+v", pd.Songs["mary"])
 	}
 }
 

@@ -63,8 +63,11 @@ export class SongListUI {
       const section = document.createElement('div');
       section.className = 'difficulty-section';
 
-      // Section header with progress
-      const completed = songs.filter(s => this.progress[s.id]).length;
+      // Section header with progress — completed if either mode has progress
+      const completed = songs.filter(s => {
+        const p = this.progress[s.id];
+        return p && (p.practice || p.performance);
+      }).length;
       section.innerHTML = `
         <div class="difficulty-header">
           <h2>Level ${diff}: ${DIFFICULTY_LABELS[diff] || ''}</h2>
@@ -82,6 +85,10 @@ export class SongListUI {
         const prog = this.progress[song.id];
         const isRecommended = recommended?.id === song.id;
 
+        const prac = prog?.practice;
+        const perf = prog?.performance;
+        const bestScore = Math.max(prac?.bestScore || 0, perf?.bestScore || 0);
+
         const card = document.createElement('div');
         card.className = 'song-card' + (isRecommended ? ' recommended' : '');
         card.innerHTML = `
@@ -91,8 +98,9 @@ export class SongListUI {
             <div class="song-composer">${song.composer}</div>
           </div>
           <div class="song-meta">
-            <div class="stars">${this._renderStars(prog?.stars || 0)}</div>
-            ${prog ? `<div class="best-score">${prog.bestScore}%</div>` : ''}
+            ${prac ? `<div class="mode-stars"><span class="mode-label">P</span>${this._renderStars(prac.stars)}</div>` : ''}
+            ${perf ? `<div class="mode-stars"><span class="mode-label">F</span>${this._renderStars(perf.stars)}</div>` : ''}
+            ${bestScore > 0 ? `<div class="best-score">${bestScore}%</div>` : ''}
           </div>
           <div class="song-skill">${song.skillFocus || ''}</div>
           <button class="btn-preview" title="Preview song">&#9654;</button>
@@ -174,10 +182,17 @@ export class SongListUI {
   }
 
   _getRecommended() {
-    // Find lowest-difficulty song that is uncompleted or has < 2 stars
+    // Find lowest-difficulty song where practice < 2 stars,
+    // or practice >= 2 but performance < 2 (nudge toward performance).
     for (const song of this.songs) {
       const prog = this.progress[song.id];
-      if (!prog || prog.stars < 2) return song;
+      const pracStars = prog?.practice?.stars || 0;
+      if (pracStars < 2) return song;
+    }
+    for (const song of this.songs) {
+      const prog = this.progress[song.id];
+      const perfStars = prog?.performance?.stars || 0;
+      if (perfStars < 2) return song;
     }
     return null;
   }

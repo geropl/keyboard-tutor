@@ -335,12 +335,13 @@ class App {
   }
 
   _onSongComplete(result) {
-    // Save progress
+    // Save progress with current mode
     this.connection.send({
       type: 'saveProgress',
       songId: this.currentSongId,
       score: result.score,
       stars: result.stars,
+      mode: this.config.mode,
     });
 
     // Show completion

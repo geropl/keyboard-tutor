@@ -75,12 +75,13 @@ func (h *WSHub) readPump(conn *websocket.Conn) {
 			SongID string `json:"songId"`
 			Score  int    `json:"score"`
 			Stars  int    `json:"stars"`
+			Mode   string `json:"mode"`
 		}
 		if err := json.Unmarshal(data, &msg); err != nil {
 			continue
 		}
 		if msg.Type == "saveProgress" && h.progress != nil {
-			if err := h.progress.Save(msg.SongID, msg.Score, msg.Stars); err != nil {
+			if err := h.progress.Save(msg.SongID, msg.Score, msg.Stars, msg.Mode); err != nil {
 				log.Printf("save progress: %v", err)
 			}
 		}
