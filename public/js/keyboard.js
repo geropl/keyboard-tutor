@@ -16,6 +16,7 @@ export class PianoKeyboard {
   }
 
   destroy() {
+    this.disableInput();
     window.removeEventListener('resize', this._resizeHandler);
   }
 
