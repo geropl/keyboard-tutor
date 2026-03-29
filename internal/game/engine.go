@@ -16,6 +16,7 @@ type Note struct {
 	Start    float64 `json:"start"`
 	Duration float64 `json:"duration"`
 	Hand     string  `json:"hand"`
+	Finger   *int    `json:"finger,omitempty"`
 }
 
 // Track is a hand's part in a song.
@@ -25,6 +26,7 @@ type Track struct {
 		NoteNum  int     `json:"note"`
 		Start    float64 `json:"start"`
 		Duration float64 `json:"duration"`
+		Finger   *int    `json:"finger,omitempty"`
 	} `json:"notes"`
 }
 
@@ -155,6 +157,7 @@ func (e *Engine) LoadSong(s Song) {
 				Start:    n.Start,
 				Duration: n.Duration,
 				Hand:     track.Hand,
+				Finger:   n.Finger,
 			})
 		}
 	}

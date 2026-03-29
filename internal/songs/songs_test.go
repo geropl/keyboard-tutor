@@ -282,6 +282,8 @@ func TestAddSongValidation(t *testing.T) {
 		{"bad note number", func(s *Song) { s.Tracks[0].Notes[0].Note = 200 }},
 		{"negative start", func(s *Song) { s.Tracks[0].Notes[0].Start = -1 }},
 		{"zero duration", func(s *Song) { s.Tracks[0].Notes[0].Duration = 0 }},
+		{"finger too low", func(s *Song) { f := 0; s.Tracks[0].Notes[0].Finger = &f }},
+		{"finger too high", func(s *Song) { f := 6; s.Tracks[0].Notes[0].Finger = &f }},
 	}
 
 	for _, tt := range tests {

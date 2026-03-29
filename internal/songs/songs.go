@@ -17,6 +17,7 @@ type Note struct {
 	Note     int     `json:"note"`
 	Start    float64 `json:"start"`
 	Duration float64 `json:"duration"`
+	Finger   *int    `json:"finger,omitempty"`
 }
 
 type Track struct {
@@ -362,6 +363,9 @@ func Validate(song *Song) error {
 			}
 			if note.Duration <= 0 {
 				return fmt.Errorf("%w: track %d note %d has non-positive duration", ErrValidation, i, j)
+			}
+			if note.Finger != nil && (*note.Finger < 1 || *note.Finger > 5) {
+				return fmt.Errorf("%w: track %d note %d has invalid finger %d (must be 1-5)", ErrValidation, i, j, *note.Finger)
 			}
 		}
 	}

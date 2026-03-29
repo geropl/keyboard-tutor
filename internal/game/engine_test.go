@@ -15,6 +15,7 @@ func singleTrack(notes []struct{ Note int; Start float64; Duration float64 }, ha
 			NoteNum  int     `json:"note"`
 			Start    float64 `json:"start"`
 			Duration float64 `json:"duration"`
+			Finger   *int    `json:"finger,omitempty"`
 		}{NoteNum: n.Note, Start: n.Start, Duration: n.Duration})
 	}
 	return []Track{t}

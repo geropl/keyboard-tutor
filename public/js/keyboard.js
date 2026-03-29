@@ -93,15 +93,22 @@ export class PianoKeyboard {
     this.flashKeys.set(note, { color, expiry: performance.now() + durationMs });
   }
 
-  setHints(notes, hand) {
+  setHints(notes, hand, fingers) {
     this._hints = new Map();
+    this._fingerHints = new Map();
     for (const n of notes) {
       this._hints.set(n, hand === 'left' ? COLORS.hintLeft : COLORS.hint);
+    }
+    if (fingers) {
+      for (const [note, finger] of fingers) {
+        this._fingerHints.set(note, finger);
+      }
     }
   }
 
   clearHints() {
     this._hints = null;
+    this._fingerHints = null;
   }
 
 
@@ -163,6 +170,28 @@ export class PianoKeyboard {
       ctx.strokeStyle = '#000';
       ctx.lineWidth = 1;
       ctx.strokeRect(key.x, key.y, key.w, key.h);
+    }
+
+    // Draw finger numbers on hinted keys
+    if (this._fingerHints?.size > 0) {
+      const allKeys = [...this.whiteKeys, ...this.blackKeys];
+      for (const key of allKeys) {
+        const finger = this._fingerHints.get(key.note);
+        if (finger == null) continue;
+        const isBlack = isBlackKey(key.note);
+        const cx = key.x + key.w / 2;
+        const cy = key.y + key.h - (isBlack ? 14 : 24);
+        const r = Math.min(key.w * 0.3, 14);
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${Math.round(r * 1.3)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(finger), cx, cy);
+      }
     }
   }
 
