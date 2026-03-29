@@ -236,10 +236,20 @@ export class GameEngine {
       if (idx !== undefined) {
         const entry = this.timingLog[idx];
         if (entry.offDeltaMs === null) {
-          const expectedEndMs = this._beatToMs(noteObj.start + noteObj.duration) + this.startTimeMs;
-          entry.offDeltaMs = nowMs - expectedEndMs;
-          const expectedEndBeat = noteObj.start + noteObj.duration;
-          entry.offBeat = expectedEndBeat + (entry.offDeltaMs / 60000) * this.tempo;
+          if (this.mode === MODE_PRACTICE) {
+            // In practice mode, wall-clock time doesn't map to beats (the
+            // song waits for input). Compute offBeat from actual hold
+            // duration relative to the press time.
+            const holdMs = nowMs - entry.onTimeMs;
+            const holdBeats = (holdMs / 60000) * this.tempo;
+            entry.offBeat = noteObj.start + holdBeats;
+            entry.offDeltaMs = holdMs - this._beatToMs(noteObj.duration);
+          } else {
+            const expectedEndMs = this._beatToMs(noteObj.start + noteObj.duration) + this.startTimeMs;
+            entry.offDeltaMs = nowMs - expectedEndMs;
+            const expectedEndBeat = noteObj.start + noteObj.duration;
+            entry.offBeat = expectedEndBeat + (entry.offDeltaMs / 60000) * this.tempo;
+          }
         }
       }
     }
