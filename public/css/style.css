@@ -402,20 +402,21 @@ html, body {
   text-align: right;
 }
 
-.status {
+.input-source-select {
   font-size: 0.75rem;
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 8px;
+  border: 1px solid #2a3a5c;
+  background: #16213e;
+  color: #ccc;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  appearance: auto;
 }
 
-.status.connected {
-  background: #1b5e20;
-  color: #81c784;
-}
-
-.status.disconnected {
-  background: #4a1010;
-  color: #e57373;
+.input-source-select:focus {
+  border-color: #4A90D9;
 }
 
 #controls-bar {
@@ -453,7 +454,6 @@ html, body {
   height: 140px;
   flex-shrink: 0;
   position: relative;
-  border-top: 3px solid #FFD700;
 }
 
 #waterfall-canvas, #keyboard-canvas {

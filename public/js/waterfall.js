@@ -1,13 +1,35 @@
-import { COLORS, isBlackKey, timingAccuracyFromDelta, colorForAccuracy } from './utils.js';
+import { COLORS, isBlackKey } from './utils.js';
 
-const NOTE_GAP = 6; // pixels between consecutive notes for visual separation
+const NOTE_GAP = 10; // pixels between all consecutive notes for visual separation
+const NOW_LINE_RATIO = 0.15; // now-line position: 15% up from the bottom
+const PAST_BEATS = 1.5; // how many beats of past to show below the now-line
+
+// Hold-bar color: green (perfect) → yellow (50% off) → deep red (100%+ off).
+// accuracy is 0..1 where 1 = exact match, 0 = completely wrong.
+function _holdBarColor(accuracy) {
+  const a = Math.max(0, Math.min(1, accuracy));
+  // green [76,175,80] → yellow [255,235,59] → red [183,28,28]
+  let r, g, b;
+  if (a >= 0.5) {
+    const t = (a - 0.5) * 2; // 1 at perfect, 0 at midpoint
+    r = Math.round(255 + (76 - 255) * t);
+    g = Math.round(235 + (175 - 235) * t);
+    b = Math.round(59 + (80 - 59) * t);
+  } else {
+    const t = a * 2; // 1 at midpoint, 0 at worst
+    r = Math.round(183 + (255 - 183) * t);
+    g = Math.round(28 + (235 - 28) * t);
+    b = Math.round(28 + (59 - 28) * t);
+  }
+  return `rgb(${r}, ${g}, ${b})`;
+}
 
 export class Waterfall {
   constructor(canvas, keyboard) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.keyboard = keyboard;
-    this.beatsVisible = 8; // how many beats of lookahead
+    this.beatsVisible = 8; // how many beats of lookahead above the now-line
     this._tempo = 120;
     this._resizeHandler = () => this._resize();
     window.addEventListener('resize', this._resizeHandler);
@@ -44,14 +66,22 @@ export class Waterfall {
     ctx.fillStyle = COLORS.waterfallBg;
     ctx.fillRect(0, 0, this.width, this.height);
 
-    const pixelsPerBeat = this.height / this.beatsVisible;
-    const startBeat = currentBeat;
+    // The now-line sits at NOW_LINE_RATIO from the bottom.
+    // Above it: future notes scrolling down. Below it: recently-played past notes.
+    const nowLineY = this.height * (1 - NOW_LINE_RATIO);
+    const totalBeats = this.beatsVisible + PAST_BEATS;
+    const pixelsPerBeat = this.height / totalBeats;
+    const startBeat = currentBeat - PAST_BEATS;
     const endBeat = currentBeat + this.beatsVisible;
+
+    // Dim the past zone
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+    ctx.fillRect(0, nowLineY, this.width, this.height - nowLineY);
 
     // Draw beat grid lines
     const firstBeat = Math.ceil(startBeat);
     for (let b = firstBeat; b <= endBeat; b++) {
-      const y = this.height - (b - startBeat) * pixelsPerBeat;
+      const y = nowLineY - (b - currentBeat) * pixelsPerBeat;
       ctx.strokeStyle = b % 4 === 0 ? 'rgba(255,255,255,0.15)' : COLORS.beatLine;
       ctx.lineWidth = b % 4 === 0 ? 1.5 : 0.5;
       ctx.beginPath();
@@ -63,19 +93,8 @@ export class Waterfall {
     // Draw notes
     if (!songNotes) return;
 
-    // Build a lookup for quick "is there a following same-pitch note?" check
-    const nextSamePitch = new Map();
-    for (let i = 0; i < songNotes.length; i++) {
-      const n = songNotes[i];
-      const end = n.start + n.duration;
-      for (let j = i + 1; j < songNotes.length; j++) {
-        if (songNotes[j].start > end + 0.01) break;
-        if (songNotes[j].note === n.note && Math.abs(songNotes[j].start - end) < 0.01) {
-          nextSamePitch.set(n, true);
-          break;
-        }
-      }
-    }
+    const gapBeats = NOTE_GAP / pixelsPerBeat;
+    const halfGap = gapBeats / 2;
 
     for (const note of songNotes) {
       const noteEnd = note.start + note.duration;
@@ -86,17 +105,12 @@ export class Waterfall {
       if (x === null) continue;
       const w = this.keyboard.getNoteWidth(note.note) - 4;
 
-      // Y position: bottom = current beat, top = future
-      let yBottom = this.height - (note.start - startBeat) * pixelsPerBeat;
-      const yTop = this.height - (noteEnd - startBeat) * pixelsPerBeat;
-
-      // Add visual gap if there's a following note at the same pitch
-      if (nextSamePitch.has(note)) {
-        yBottom -= NOTE_GAP;
-      }
+      // Y position relative to the now-line: positive = above (future), negative = below (past)
+      const yBottom = nowLineY - (note.start + halfGap - currentBeat) * pixelsPerBeat;
+      const yTop = nowLineY - (noteEnd - halfGap - currentBeat) * pixelsPerBeat;
 
       const h = yBottom - yTop;
-      if (h < 1) continue; // too small to draw
+      if (h < 1) continue;
 
       const isHit = hitNotes?.has(note);
       const isActive = activeSliceNotes?.has(note);
@@ -111,7 +125,7 @@ export class Waterfall {
         color = COLORS.rightHand;
       }
 
-      // Glow for active slice notes (set shadow before drawing)
+      // Glow for active slice notes
       if (isActive && !isHit) {
         ctx.shadowColor = color;
         ctx.shadowBlur = 12;
@@ -124,20 +138,51 @@ export class Waterfall {
       ctx.roundRect(x - w / 2, yTop, w, h, radius);
       ctx.fill();
 
-      // Darker bottom edge to help distinguish stacked notes of different lengths
-      if (h > 6) {
-        ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        const edgeH = Math.min(3, h / 3);
-        ctx.fillRect(x - w / 2, yBottom - edgeH, w, edgeH);
-      }
-
       // Reset shadow
       if (ctx.shadowBlur > 0) {
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
       }
 
-      // Note label on every note — scale font with block height
+      // Duration slider: for hit notes, show actual hold duration as a bar
+      // growing from the bottom of the note block upward. The bar can
+      // overshoot the note block if the player holds longer than required.
+      // Color reflects accuracy: green at 100%, fading to red when far off.
+      if (isHit && timingMap) {
+        const timing = timingMap.get(note);
+        if (timing) {
+          // For released notes, use the recorded offBeat.
+          // For still-held notes, compute hold from wall-clock time so it
+          // grows smoothly even in Practice mode (where currentBeat jumps).
+          let holdDuration;
+          if (timing.offBeat !== null) {
+            holdDuration = timing.offBeat - note.start;
+          } else {
+            const elapsedMs = performance.now() - timing.onTimeMs;
+            holdDuration = (elapsedMs / 60000) * (this._tempo || 120);
+          }
+          holdDuration = Math.max(0, holdDuration);
+          const fillRatio = holdDuration / note.duration; // unclamped — can exceed 1.0
+
+          if (fillRatio > 0) {
+            // Accuracy: 1.0 = perfect, 0.0 = completely off
+            const accuracy = Math.max(0, 1 - Math.abs(fillRatio - 1.0));
+            const barColor = _holdBarColor(accuracy);
+
+            // Horizontal slider line that moves from bottom to top of the note
+            // (and beyond if held too long)
+            const sliderY = yBottom - h * fillRatio;
+            const lineH = 3;
+            const margin = 2;
+            ctx.fillStyle = barColor;
+            ctx.beginPath();
+            ctx.roundRect(x - w / 2 + margin, sliderY - lineH / 2, w - margin * 2, lineH, 1.5);
+            ctx.fill();
+          }
+        }
+      }
+
+      // Note label — scale font with block height
       if (h > 12) {
         const label = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][note.note % 12];
         const fontSize = Math.min(Math.max(Math.floor(h * 0.45), 13), 28);
@@ -147,39 +192,14 @@ export class Waterfall {
         ctx.textBaseline = 'middle';
         ctx.fillText(label, x, yTop + h / 2);
       }
-
-      // Timing markers for hit notes
-      if (isHit && timingMap) {
-        const timing = timingMap.get(note);
-        if (timing) {
-          const markerH = 2;
-          const markerW = w;
-
-          // Note-on marker: offset from the note's start position (bottom of block)
-          const onOffsetBeats = (timing.onDeltaMs / 60000) * (this._tempo || 120);
-          const onMarkerY = yBottom - onOffsetBeats * pixelsPerBeat;
-          const onAccuracy = timingAccuracyFromDelta(timing.onDeltaMs);
-          ctx.fillStyle = colorForAccuracy(onAccuracy);
-          ctx.fillRect(x - markerW / 2, onMarkerY - markerH / 2, markerW, markerH);
-
-          // Note-off marker: offset from the note's end position (top of block)
-          if (timing.offDeltaMs !== null) {
-            const offOffsetBeats = (timing.offDeltaMs / 60000) * (this._tempo || 120);
-            const offMarkerY = yTop - offOffsetBeats * pixelsPerBeat;
-            const offAccuracy = timingAccuracyFromDelta(timing.offDeltaMs);
-            ctx.fillStyle = colorForAccuracy(offAccuracy);
-            ctx.fillRect(x - markerW / 2, offMarkerY - markerH / 2, markerW, markerH);
-          }
-        }
-      }
     }
 
-    // Hit line
+    // Now-line
     ctx.strokeStyle = COLORS.hitLine;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0, this.height - 1);
-    ctx.lineTo(this.width, this.height - 1);
+    ctx.moveTo(0, nowLineY);
+    ctx.lineTo(this.width, nowLineY);
     ctx.stroke();
   }
 }

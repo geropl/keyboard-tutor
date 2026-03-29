@@ -76,6 +76,7 @@ export class GameEngine {
     this.timingLog = [];
     this._noteToTimingIdx = new Map();
     this.startTimeMs = 0;
+    this._practiceScrollTarget = 0;
     this._computePendingSlice();
   }
 
@@ -120,11 +121,18 @@ export class GameEngine {
   _recordNoteOn(noteObj, nowMs) {
     const expectedMs = this._beatToMs(noteObj.start) + this.startTimeMs;
     const onDelta = this.mode === MODE_PRACTICE ? 0 : (nowMs - expectedMs);
+    // Convert actual press time to beat position for waterfall rendering
+    const onBeat = this.mode === MODE_PRACTICE
+      ? noteObj.start
+      : noteObj.start + (onDelta / 60000) * this.tempo;
     const entry = {
       note: noteObj.note,
       hand: noteObj.hand,
       onDeltaMs: onDelta,
       offDeltaMs: null,
+      onBeat,       // actual beat when key was pressed
+      offBeat: null, // actual beat when key was released (set in noteOff)
+      onTimeMs: nowMs, // wall-clock time of press (for real-time hold calculation)
       // Store reference to the note object for release lookup
       _noteObj: noteObj,
     };
@@ -212,6 +220,9 @@ export class GameEngine {
         const noteObj = entry._noteObj;
         const expectedEndMs = this._beatToMs(noteObj.start + noteObj.duration) + this.startTimeMs;
         entry.offDeltaMs = nowMs - expectedEndMs;
+        // Convert actual release time to beat position
+        const expectedEndBeat = noteObj.start + noteObj.duration;
+        entry.offBeat = expectedEndBeat + (entry.offDeltaMs / 60000) * this.tempo;
         break;
       }
     }
@@ -220,6 +231,21 @@ export class GameEngine {
   _advancePastSlice(sliceStart) {
     // Move currentBeat to this slice's start so waterfall aligns
     this.currentBeat = sliceStart;
+
+    // In practice mode, compute the scroll-through target: the end of the
+    // longest note in this slice, so the waterfall smoothly scrolls through
+    // the note duration before stopping at the next slice.
+    if (this.mode === MODE_PRACTICE) {
+      let maxEnd = sliceStart;
+      for (const note of this.allNotes) {
+        if (Math.abs(note.start - sliceStart) < 0.001 && this.hitNotes.has(note)) {
+          maxEnd = Math.max(maxEnd, note.start + note.duration);
+        }
+      }
+      this._practiceScrollTarget = maxEnd;
+      this.lastFrameTime = null; // reset so smooth advance starts fresh
+    }
+
     this._computePendingSlice();
 
     // Check if song is complete
@@ -271,19 +297,31 @@ export class GameEngine {
         this._completeSong();
       }
     } else {
-      // In practice mode, advance smoothly toward the next slice's beat
-      if (this.pendingSlice.length > 0) {
-        const targetBeat = this.pendingSlice[0].start;
-        if (this.currentBeat < targetBeat) {
-          if (this.lastFrameTime === null) {
-            this.lastFrameTime = now;
-            return;
-          }
-          const deltaMs = now - this.lastFrameTime;
+      // In practice mode, advance smoothly:
+      // 1. Through the current note's duration (scroll target from _advancePastSlice)
+      // 2. Then toward the next pending slice's start beat
+      // 3. Stop at the next slice and wait for input
+      const scrollTarget = this._practiceScrollTarget || 0;
+      let targetBeat;
+      if (this.currentBeat < scrollTarget) {
+        // Still scrolling through the held note's duration
+        targetBeat = scrollTarget;
+      } else if (this.pendingSlice.length > 0) {
+        // Advance toward the next slice
+        targetBeat = this.pendingSlice[0].start;
+      } else {
+        targetBeat = null;
+      }
+
+      if (targetBeat !== null && this.currentBeat < targetBeat) {
+        if (this.lastFrameTime === null) {
           this.lastFrameTime = now;
-          const deltaBeats = (deltaMs / 60000) * this.tempo;
-          this.currentBeat = Math.min(this.currentBeat + deltaBeats, targetBeat);
+          return;
         }
+        const deltaMs = now - this.lastFrameTime;
+        this.lastFrameTime = now;
+        const deltaBeats = (deltaMs / 60000) * this.tempo;
+        this.currentBeat = Math.min(this.currentBeat + deltaBeats, targetBeat);
       }
     }
   }

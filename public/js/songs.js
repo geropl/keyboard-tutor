@@ -1,5 +1,5 @@
 import { COLORS, DIFFICULTY_LABELS } from './utils.js';
-import { MODE_PRACTICE, MODE_PERFORMANCE, START_COUNTDOWN, START_FIRST_KEYPRESS } from './config.js';
+import { MODE_PRACTICE, MODE_PERFORMANCE, START_COUNTDOWN, START_FIRST_KEYPRESS, INPUT_BACKEND, INPUT_DEBUG } from './config.js';
 
 export class SongListUI {
   constructor(container, config) {
@@ -176,6 +176,13 @@ export class SongListUI {
           <button class="seg-btn ${!isCountdown ? 'active' : ''}" data-value="${START_FIRST_KEYPRESS}">First Keypress</button>
         </div>
       </div>
+      <div class="settings-group">
+        <label class="settings-label">Input Source</label>
+        <div class="segmented-control" id="input-control">
+          <button class="seg-btn ${this.config.inputSource === INPUT_BACKEND ? 'active' : ''}" data-value="${INPUT_BACKEND}">Backend</button>
+          <button class="seg-btn ${this.config.inputSource === INPUT_DEBUG ? 'active' : ''}" data-value="${INPUT_DEBUG}">Debug</button>
+        </div>
+      </div>
     `;
 
     // Mode toggle
@@ -202,6 +209,20 @@ export class SongListUI {
       if (!btn) return;
       this.config.performanceStart = btn.dataset.value;
       panel.querySelectorAll('#start-control .seg-btn').forEach(b => b.classList.toggle('active', b === btn));
+    });
+
+    // Input source toggle
+    panel.querySelector('#input-control').addEventListener('click', (e) => {
+      const btn = e.target.closest('.seg-btn');
+      if (!btn) return;
+      this.config.inputSource = btn.dataset.value;
+      panel.querySelectorAll('#input-control .seg-btn').forEach(b => b.classList.toggle('active', b === btn));
+      // Sync the top-bar selector and trigger its change handler
+      const topBarSelect = document.getElementById('input-source');
+      if (topBarSelect) {
+        topBarSelect.value = this.config.inputSource;
+        topBarSelect.dispatchEvent(new Event('change'));
+      }
     });
 
     return panel;

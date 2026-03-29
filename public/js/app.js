@@ -7,8 +7,8 @@ import { PianoAudio } from './audio.js';
 import { SongListUI } from './songs.js';
 import { ImportEditor } from './import-editor.js';
 import { CompletionScreen } from './progress.js';
-import { COLORS, starsForScore, timingAccuracyFromDelta, colorForAccuracy } from './utils.js';
-import { Config, MODE_PRACTICE, MODE_PERFORMANCE, START_COUNTDOWN, START_FIRST_KEYPRESS } from './config.js';
+import { COLORS, starsForScore } from './utils.js';
+import { Config, MODE_PRACTICE, MODE_PERFORMANCE, START_COUNTDOWN, START_FIRST_KEYPRESS, INPUT_BACKEND, INPUT_DEBUG } from './config.js';
 
 class App {
   constructor() {
@@ -78,25 +78,21 @@ class App {
       }
     };
 
-    // MIDI connection
-    this.connection.on('noteOn', (e) => this._onNoteOn(e));
-    this.connection.on('noteOff', (e) => this._onNoteOff(e));
-
-    // Connection status
-    const statusEl = document.getElementById('connection-status');
-    const setConnected = () => {
-      statusEl.textContent = 'Connected';
-      statusEl.className = 'status connected';
-    };
-    this.connection.on('open', setConnected);
-    this.connection.on('close', () => {
-      statusEl.textContent = 'Reconnecting...';
-      statusEl.className = 'status disconnected';
+    // MIDI connection (backend mode)
+    this.connection.on('noteOn', (e) => {
+      if (this.config.inputSource === INPUT_BACKEND) this._onNoteOn(e);
     });
-    // If WebSocket already connected before listeners were registered
-    if (this.connection.ws?.readyState === WebSocket.OPEN) {
-      setConnected();
-    }
+    this.connection.on('noteOff', (e) => {
+      if (this.config.inputSource === INPUT_BACKEND) this._onNoteOff(e);
+    });
+
+    // Input source selector
+    const inputSelect = document.getElementById('input-source');
+    inputSelect.value = this.config.inputSource;
+    inputSelect.onchange = () => {
+      this.config.inputSource = inputSelect.value;
+      this._applyInputSource();
+    };
 
     // Game completion
     this.game.onComplete = (result) => this._onSongComplete(result);
@@ -104,6 +100,9 @@ class App {
     // Start render loop
     this._renderLoop = this._renderLoop.bind(this);
     requestAnimationFrame(this._renderLoop);
+
+    // Apply initial input source
+    this._applyInputSource();
 
     // Initialize
     this._showSongList();
@@ -163,6 +162,7 @@ class App {
     await new Promise(r => requestAnimationFrame(r));
     this.keyboard.resize();
     this.waterfall.resize();
+    this._applyInputSource();
 
     // Apply global config tempo (preserved across restart/retry)
     const tempoSlider = document.getElementById('tempo-slider');
@@ -225,6 +225,7 @@ class App {
     await new Promise(r => requestAnimationFrame(r));
     this.keyboard.resize();
     this.waterfall.resize();
+    this._applyInputSource();
 
     // Apply global config tempo
     const tempoSlider = document.getElementById('tempo-slider');
@@ -328,9 +329,7 @@ class App {
 
     const result = this.game.noteOn(e.note);
     if (result.hit) {
-      // Use accuracy-based color instead of uniform hit color
-      const accuracy = timingAccuracyFromDelta(result.onDeltaMs);
-      const color = colorForAccuracy(accuracy);
+      const color = result.hand === 'left' ? COLORS.leftHand : COLORS.rightHand;
       this.keyboard.pressKey(e.note, color);
     } else {
       this.keyboard.flash(e.note, COLORS.wrong, 300);
@@ -344,20 +343,8 @@ class App {
   _onNoteOff(e) {
     if (this.previewMode) return;
 
-    // Capture the release timing entry before calling noteOff
     this.game.noteOff(e.note);
     this.keyboard.releaseKey(e.note);
-
-    // Flash release-accuracy color if we have a timing entry for this note
-    for (let i = this.game.timingLog.length - 1; i >= 0; i--) {
-      const entry = this.game.timingLog[i];
-      if (entry.note === e.note && entry.offDeltaMs !== null) {
-        const releaseAccuracy = timingAccuracyFromDelta(entry.offDeltaMs);
-        const releaseColor = colorForAccuracy(releaseAccuracy);
-        this.keyboard.flash(e.note, releaseColor, 300);
-        break;
-      }
-    }
   }
 
   _onSongComplete(result) {
@@ -374,6 +361,19 @@ class App {
     // Show completion
     const title = this.game.song?.title || this.currentSongId;
     this.completionScreen.show(result, title);
+  }
+
+  // --- Input source ---
+
+  _applyInputSource() {
+    if (this.config.inputSource === INPUT_DEBUG) {
+      this.keyboard.enableInput(
+        (note) => this._onNoteOn({ note }),
+        (note) => this._onNoteOff({ note }),
+      );
+    } else {
+      this.keyboard.disableInput();
+    }
   }
 
   // --- Import flow ---
