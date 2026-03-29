@@ -165,6 +165,9 @@ export class GameEngine {
       this.lastFrameTime = nowMs;
     }
 
+    // Ignore duplicate noteOn if this key is already active (no noteOff received yet)
+    if (this._activeNoteObj.has(midiNote)) return { hit: false, note: midiNote };
+
     // Check if this note matches any pending slice note
     const matchIdx = this.pendingSlice.findIndex(n => n.note === midiNote && !this.hitNotes.has(n));
     if (matchIdx >= 0) {

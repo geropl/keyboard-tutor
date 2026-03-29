@@ -308,3 +308,56 @@ describe('performance mode: first-keypress start', () => {
       `onDeltaMs should be near 0, got ${engine.timingLog[0].onDeltaMs}`);
   });
 });
+
+// ─── Double noteOn guard (regression for destroy() listener leak) ────
+
+describe('double noteOn for same key must not hit two notes', () => {
+  it('second noteOn without noteOff does not match the next note', () => {
+    const engine = new GameEngine();
+    // Two E4 notes back to back (Ode to Joy opening)
+    const song = makeSong(singleTrack([[64, 0, 1], [64, 1, 1]]), 120);
+    engine.mode = MODE_PERFORMANCE;
+    engine.loadSong(song);
+    engine.start();
+    engine.waitingForFirstKey = true;
+
+    // First noteOn — matches note A at beat 0
+    const r1 = engine.noteOn(64);
+    assert.equal(r1.hit, true);
+    assert.equal(engine.hits, 1);
+    assert.equal(engine.timingLog.length, 1);
+
+    // Second noteOn WITHOUT a noteOff in between (simulates the
+    // duplicate listener bug). Should NOT match note B.
+    const r2 = engine.noteOn(64);
+    assert.equal(r2.hit, false, 'duplicate noteOn should not hit the next note');
+    assert.equal(engine.hits, 1, 'hit count should still be 1');
+    assert.equal(engine.timingLog.length, 1, 'should still have only one timing entry');
+
+    // Note B should not be in hitNotes
+    const noteB = engine.allNotes[1];
+    assert.equal(engine.hitNotes.has(noteB), false, 'second note should not be hit');
+  });
+
+  it('works correctly with proper noteOff between presses', () => {
+    const engine = new GameEngine();
+    const song = makeSong(singleTrack([[64, 0, 1], [64, 1, 1]]), 120);
+    engine.mode = MODE_PRACTICE;
+    engine.loadSong(song);
+    engine.start();
+
+    // Hit first note, release it
+    engine.noteOn(64);
+    engine.noteOff(64);
+    assert.equal(engine.hits, 1);
+
+    // Advance to second note
+    advanceFrames(engine, 200);
+
+    // Hit second note properly
+    const r2 = engine.noteOn(64);
+    assert.equal(r2.hit, true, 'second note should be hit after proper noteOff');
+    assert.equal(engine.hits, 2);
+    assert.equal(engine.timingLog.length, 2);
+  });
+});
