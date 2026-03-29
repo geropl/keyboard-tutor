@@ -151,6 +151,11 @@ export class Waterfall {
       if (isHit && timingMap) {
         const timing = timingMap.get(note);
         if (timing) {
+          if (!this._dbgLogged) this._dbgLogged = 0;
+          if (this._dbgLogged < 20) {
+            console.log(`[waterfall] bar for note=${note.note} start=${note.start} offBeat=${timing.offBeat}`);
+            this._dbgLogged++;
+          }
           // For released notes, use the recorded offBeat.
           // For still-held notes, compute hold from wall-clock time so it
           // grows smoothly even in Practice mode (where currentBeat jumps).

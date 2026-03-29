@@ -48,6 +48,9 @@ export class GameEngine {
 
     // Track which physical keys are currently down
     this.physicalKeys = new Set();
+    // Map MIDI note number → note object for the active press, so noteOff
+    // closes the correct timing entry when consecutive notes share a pitch.
+    this._activeNoteObj = new Map();
   }
 
   _beatToMs(beat) {
@@ -75,6 +78,7 @@ export class GameEngine {
     this.waitingForFirstKey = false;
     this.timingLog = [];
     this._noteToTimingIdx = new Map();
+    this._activeNoteObj = new Map();
     this.startTimeMs = 0;
     this._practiceScrollTarget = 0;
     this._computePendingSlice();
@@ -84,7 +88,9 @@ export class GameEngine {
     this.playing = true;
     const now = performance.now();
     this.lastFrameTime = now;
-    this.startTimeMs = now;
+    // startTimeMs is the wall-clock epoch for beat 0.
+    // currentBeat starts at -2 (visual lead-in), so offset accordingly.
+    this.startTimeMs = now - this._beatToMs(this.currentBeat);
   }
 
   stop() {
@@ -148,11 +154,15 @@ export class GameEngine {
     this.physicalKeys.add(midiNote);
     if (!this.playing || this.completed) return { hit: false, note: midiNote };
 
-    // Performance mode: first keypress starts time
+    // Performance mode: first keypress starts the clock.
+    // Align currentBeat to the first pending note so the waterfall doesn't
+    // jump and startTimeMs maps beat 0 to "now".
     if (this.waitingForFirstKey) {
       this.waitingForFirstKey = false;
+      const firstBeat = this.pendingSlice.length > 0 ? this.pendingSlice[0].start : 0;
+      this.currentBeat = firstBeat;
+      this.startTimeMs = nowMs - this._beatToMs(firstBeat);
       this.lastFrameTime = nowMs;
-      this.startTimeMs = nowMs;
     }
 
     // Check if this note matches any pending slice note
@@ -165,6 +175,7 @@ export class GameEngine {
         const onDelta = this._recordNoteOn(matched, nowMs);
         this.hitNotes.add(matched);
         this.hits++;
+        this._activeNoteObj.set(midiNote, matched);
         this.pendingSlice.splice(matchIdx, 1);
         this._advancePastSlice(matched.start);
         return { hit: true, note: midiNote, hand: matched.hand, onDeltaMs: onDelta };
@@ -193,6 +204,7 @@ export class GameEngine {
           }
           this.hitNotes.add(n);
           this.hits++;
+          this._activeNoteObj.set(n.note, n);
         }
         this.pendingSlice = [];
         this._sliceMatches = null;
@@ -213,29 +225,38 @@ export class GameEngine {
       this._sliceMatches = null;
     }
 
-    // Record release timing for the most recent hit of this note
-    for (let i = this.timingLog.length - 1; i >= 0; i--) {
-      const entry = this.timingLog[i];
-      if (entry.note === midiNote && entry.offDeltaMs === null) {
-        const noteObj = entry._noteObj;
-        const expectedEndMs = this._beatToMs(noteObj.start + noteObj.duration) + this.startTimeMs;
-        entry.offDeltaMs = nowMs - expectedEndMs;
-        // Convert actual release time to beat position
-        const expectedEndBeat = noteObj.start + noteObj.duration;
-        entry.offBeat = expectedEndBeat + (entry.offDeltaMs / 60000) * this.tempo;
-        break;
+    // Close the timing entry for the specific note object this key was playing.
+    const noteObj = this._activeNoteObj.get(midiNote);
+    if (noteObj) {
+      this._activeNoteObj.delete(midiNote);
+      const idx = this._noteToTimingIdx.get(noteObj);
+      if (idx !== undefined) {
+        const entry = this.timingLog[idx];
+        if (entry.offDeltaMs === null) {
+          const expectedEndMs = this._beatToMs(noteObj.start + noteObj.duration) + this.startTimeMs;
+          entry.offDeltaMs = nowMs - expectedEndMs;
+          const expectedEndBeat = noteObj.start + noteObj.duration;
+          entry.offBeat = expectedEndBeat + (entry.offDeltaMs / 60000) * this.tempo;
+        }
+      }
+    }
+
+    // Complete song after the last note is released
+    if (this.pendingSlice.length === 0 && this.hits === this.totalNotes && !this.completed) {
+      const allReleased = this.timingLog.every(e => e.offDeltaMs !== null);
+      if (allReleased) {
+        this._completeSong();
       }
     }
   }
 
   _advancePastSlice(sliceStart) {
-    // Move currentBeat to this slice's start so waterfall aligns
-    this.currentBeat = sliceStart;
-
-    // In practice mode, compute the scroll-through target: the end of the
-    // longest note in this slice, so the waterfall smoothly scrolls through
-    // the note duration before stopping at the next slice.
+    // In practice mode, snap currentBeat to the slice and set up smooth
+    // scroll-through of the note duration. In performance mode, currentBeat
+    // is driven by wall-clock time — never overwrite it on a hit.
     if (this.mode === MODE_PRACTICE) {
+      this.currentBeat = sliceStart;
+
       let maxEnd = sliceStart;
       for (const note of this.allNotes) {
         if (Math.abs(note.start - sliceStart) < 0.001 && this.hitNotes.has(note)) {
@@ -247,11 +268,6 @@ export class GameEngine {
     }
 
     this._computePendingSlice();
-
-    // Check if song is complete
-    if (this.pendingSlice.length === 0 && this.hits === this.totalNotes) {
-      this._completeSong();
-    }
   }
 
   _completeSong() {
