@@ -192,11 +192,14 @@ class App {
 
     // Update keyboard hints for pending notes
     if (this.game.playing && this.game.pendingSlice.length > 0) {
-      const hintNotes = this.game.pendingSlice
-        .filter(n => !this.game.hitNotes.has(n))
-        .map(n => n.note);
+      const pending = this.game.pendingSlice.filter(n => !this.game.hitNotes.has(n));
+      const hintNotes = pending.map(n => n.note);
       const hand = this.game.pendingSlice[0]?.hand || 'right';
-      this.keyboard.setHints(hintNotes, hand);
+      const fingers = new Map();
+      for (const n of pending) {
+        if (n.finger != null) fingers.set(n.note, n.finger);
+      }
+      this.keyboard.setHints(hintNotes, hand, fingers.size > 0 ? fingers : null);
     } else {
       this.keyboard.clearHints();
     }

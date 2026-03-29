@@ -134,13 +134,34 @@ export class Waterfall {
 
       // Note label on every note — scale font with block height
       if (h > 12) {
-        const label = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][note.note % 12];
-        const fontSize = Math.min(Math.max(Math.floor(h * 0.45), 13), 28);
+        const noteName = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][note.note % 12];
+        const hasFinger = note.finger != null;
         ctx.fillStyle = isHit ? 'rgba(255,255,255,0.5)' : '#fff';
-        ctx.font = `bold ${fontSize}px sans-serif`;
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, x, yTop + h / 2);
+
+        if (hasFinger && h > 30) {
+          // Tall block: show note name + finger number stacked
+          const nameSize = Math.min(Math.max(Math.floor(h * 0.28), 11), 22);
+          const fingerSize = Math.min(Math.max(Math.floor(h * 0.32), 13), 26);
+          ctx.font = `${nameSize}px sans-serif`;
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(noteName, x, yTop + h / 2 - 1);
+          ctx.font = `bold ${fingerSize}px sans-serif`;
+          ctx.textBaseline = 'top';
+          ctx.fillText(String(note.finger), x, yTop + h / 2 + 1);
+        } else if (hasFinger) {
+          // Short block with finger: show finger number only (more actionable)
+          const fontSize = Math.min(Math.max(Math.floor(h * 0.55), 13), 28);
+          ctx.font = `bold ${fontSize}px sans-serif`;
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(note.finger), x, yTop + h / 2);
+        } else {
+          // No finger data: show note name
+          const fontSize = Math.min(Math.max(Math.floor(h * 0.45), 13), 28);
+          ctx.font = `bold ${fontSize}px sans-serif`;
+          ctx.textBaseline = 'middle';
+          ctx.fillText(noteName, x, yTop + h / 2);
+        }
       }
     }
 
